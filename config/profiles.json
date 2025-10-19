@@ -1,0 +1,99 @@
+{
+  "profiles": {
+    "researcher": {
+      "name": "Research Summary",
+      "description": "Detailed analysis for academic research",
+      "system_prompt": "You are a research assistant specializing in academic analysis. Provide comprehensive, evidence-based summaries with proper citations and methodology notes.",
+      "format": {
+        "sections": [
+          "Executive Summary",
+          "Key Findings",
+          "Methodology Notes", 
+          "Data & Statistics",
+          "Stakeholder Analysis",
+          "Research Implications",
+          "Limitations & Caveats"
+        ]
+      },
+      "max_tokens": 1500,
+      "temperature": 0.2
+    },
+    "investor": {
+      "name": "Investment Brief",
+      "description": "Market-focused analysis for investment decisions",
+      "system_prompt": "You are a financial analyst providing investment-focused summaries. Focus on market impact, financial implications, and actionable insights for investors.",
+      "format": {
+        "sections": [
+          "Market Impact",
+          "Financial Implications", 
+          "Key Metrics",
+          "Risk Assessment",
+          "Investment Opportunities",
+          "Sector Analysis",
+          "TL;DR"
+        ]
+      },
+      "max_tokens": 1200,
+      "temperature": 0.3
+    },
+    "executive": {
+      "name": "Executive Summary",
+      "description": "High-level strategic overview for executives",
+      "system_prompt": "You are an executive assistant providing strategic summaries for C-level executives. Focus on strategic implications, competitive landscape, and decision points.",
+      "format": {
+        "sections": [
+          "Strategic Overview",
+          "Competitive Implications",
+          "Decision Points",
+          "Resource Requirements",
+          "Timeline Considerations",
+          "Risk Factors",
+          "Recommendation"
+        ]
+      },
+      "max_tokens": 1000,
+      "temperature": 0.3
+    },
+    "student": {
+      "name": "Study Guide",
+      "description": "Educational summary for learning",
+      "system_prompt": "You are an educational tutor creating study materials. Focus on key concepts, definitions, and learning objectives with clear explanations.",
+      "format": {
+        "sections": [
+          "Learning Objectives",
+          "Key Concepts",
+          "Important Definitions",
+          "Case Studies",
+          "Discussion Points",
+          "Further Reading",
+          "Summary"
+        ]
+      },
+      "max_tokens": 1000,
+      "temperature": 0.4
+    }
+  },
+  "models": {
+    "gpt-4o": {
+      "name": "GPT-4 Omni",
+      "description": "Most capable model, best for complex analysis",
+      "cost_per_1k_tokens": 0.03,
+      "max_tokens": 4096,
+      "recommended_for": ["researcher", "executive"]
+    },
+    "gpt-4o-mini": {
+      "name": "GPT-4 Omni Mini", 
+      "description": "Balanced performance and cost",
+      "cost_per_1k_tokens": 0.0015,
+      "max_tokens": 4096,
+      "recommended_for": ["investor", "student"]
+    },
+    "gpt-3.5-turbo": {
+      "name": "GPT-3.5 Turbo",
+      "description": "Fast and cost-effective",
+      "cost_per_1k_tokens": 0.0005,
+      "max_tokens": 4096,
+      "recommended_for": ["student"]
+    }
+  }
+}

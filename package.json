@@ -1,0 +1,19 @@
+{
+  "name": "web-article-summarizer",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["web-scraping", "summarization", "news", "automation"],
+  "author": "",
+  "license": "ISC",
+  "description": "A tool to scrape and summarize web articles using OpenAI",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "openai": "^6.5.0",
+    "puppeteer": "^24.25.0"
+  }
+}
