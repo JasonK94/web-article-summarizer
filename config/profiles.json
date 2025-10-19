@@ -88,12 +88,40 @@
       "max_tokens": 4096,
       "recommended_for": ["investor", "student"]
     },
+    "gpt-4-turbo": {
+      "name": "GPT-4 Turbo",
+      "description": "Fast GPT-4 variant",
+      "cost_per_1k_tokens": 0.01,
+      "max_tokens": 4096,
+      "recommended_for": ["researcher", "executive"]
+    },
+    "gpt-4": {
+      "name": "GPT-4",
+      "description": "Original GPT-4 model",
+      "cost_per_1k_tokens": 0.03,
+      "max_tokens": 4096,
+      "recommended_for": ["researcher", "executive"]
+    },
     "gpt-3.5-turbo": {
       "name": "GPT-3.5 Turbo",
       "description": "Fast and cost-effective",
       "cost_per_1k_tokens": 0.0005,
       "max_tokens": 4096,
       "recommended_for": ["student"]
+    },
+    "o1-preview": {
+      "name": "o1-preview",
+      "description": "Reasoning model for complex analysis",
+      "cost_per_1k_tokens": 0.015,
+      "max_tokens": 4096,
+      "recommended_for": ["researcher", "executive"]
+    },
+    "o1-mini": {
+      "name": "o1-mini",
+      "description": "Smaller reasoning model",
+      "cost_per_1k_tokens": 0.003,
+      "max_tokens": 4096,
+      "recommended_for": ["investor", "student"]
     }
   }
 }

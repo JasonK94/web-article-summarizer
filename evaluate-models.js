@@ -1,0 +1,193 @@
+import fs from "fs/promises";
+import path from "path";
+import OpenAI from "openai";
+import "dotenv/config";
+
+// Load configuration
+const profiles = JSON.parse(await fs.readFile("config/profiles.json", "utf-8"));
+
+// Configuration
+const config = {
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  evaluationProfile: process.env.EVALUATION_PROFILE || "researcher",
+  modelsToTest: process.env.MODELS_TO_TEST ? process.env.MODELS_TO_TEST.split(",") : ["gpt-4o-mini", "gpt-3.5-turbo", "o1-mini"]
+};
+
+console.log("🔬 Model Evaluation Tool");
+console.log(`📋 Testing models: ${config.modelsToTest.join(", ")}`);
+console.log(`📊 Evaluation profile: ${config.evaluationProfile}\n`);
+
+// Initialize OpenAI client
+const client = new OpenAI({ apiKey: config.openaiApiKey });
+
+// Load URLs to test
+const urls = (await fs.readFile("urls.txt", "utf-8"))
+  .split("\n").map(s => s.trim()).filter(Boolean);
+
+const profile = profiles.profiles[config.evaluationProfile];
+const evaluationResults = [];
+
+console.log(`📊 Testing ${urls.length} URLs across ${config.modelsToTest.length} models...\n`);
+
+// Test each model
+for (const modelName of config.modelsToTest) {
+  const model = profiles.models[modelName];
+  if (!model) {
+    console.log(`⚠️  Model ${modelName} not found in profiles.json`);
+    continue;
+  }
+
+  console.log(`🤖 Testing ${model.name} (${modelName})`);
+  
+  const modelResults = {
+    model: modelName,
+    modelInfo: model,
+    results: [],
+    totalTokens: 0,
+    totalCost: 0
+  };
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    console.log(`  [${i + 1}/${urls.length}] Testing: ${url}`);
+    
+    try {
+      // Generate summary
+      const summaryResponse = await client.chat.completions.create({
+        model: modelName,
+        messages: [
+          {
+            role: "system",
+            content: profile.system_prompt
+          },
+          {
+            role: "user",
+            content: `Please analyze this article using the ${profile.name} format:
+
+URL: ${url}
+
+Content: [Sample content for testing - replace with actual content extraction]
+
+Please structure your response according to these sections:
+${profile.format.sections.map(s => `- ${s}`).join('\n')}`
+          }
+        ],
+        max_tokens: profile.max_tokens,
+        temperature: profile.temperature
+      });
+
+      const summary = summaryResponse.choices[0].message.content;
+      const tokensUsed = summaryResponse.usage?.total_tokens || 0;
+      const cost = tokensUsed * model.cost_per_1k_tokens / 1000;
+
+      modelResults.results.push({
+        url: url,
+        summary: summary,
+        tokensUsed: tokensUsed,
+        cost: cost
+      });
+
+      modelResults.totalTokens += tokensUsed;
+      modelResults.totalCost += cost;
+
+      console.log(`    ✅ Generated summary (${tokensUsed} tokens, $${cost.toFixed(4)})`);
+
+    } catch (error) {
+      console.error(`    ❌ Error:`, error.message);
+      modelResults.results.push({
+        url: url,
+        error: error.message,
+        tokensUsed: 0,
+        cost: 0
+      });
+    }
+  }
+
+  evaluationResults.push(modelResults);
+  console.log(`  📊 ${model.name} completed: ${modelResults.totalTokens} tokens, $${modelResults.totalCost.toFixed(4)} total cost\n`);
+}
+
+// Generate evaluation report
+const reportDir = path.resolve("evaluation");
+await fs.mkdir(reportDir, { recursive: true });
+
+const reportPath = path.join(reportDir, "model_evaluation_report.md");
+const reportContent = `# Model Evaluation Report
+
+**Generated:** ${new Date().toISOString()}  
+**Profile:** ${profile.name}  
+**URLs Tested:** ${urls.length}  
+**Models Tested:** ${config.modelsToTest.join(", ")}
+
+## Summary
+
+${evaluationResults.map(result => `
+### ${result.modelInfo.name} (${result.model})
+
+- **Total Tokens:** ${result.totalTokens}
+- **Total Cost:** $${result.totalCost.toFixed(4)}
+- **Average Tokens per Article:** ${Math.round(result.totalTokens / urls.length)}
+- **Average Cost per Article:** $${(result.totalCost / urls.length).toFixed(4)}
+- **Success Rate:** ${result.results.filter(r => !r.error).length}/${urls.length} (${Math.round(result.results.filter(r => !r.error).length / urls.length * 100)}%)
+`).join('\n')}
+
+## Detailed Results
+
+${evaluationResults.map(result => `
+### ${result.modelInfo.name}
+
+${result.results.map((r, i) => `
+#### Article ${i + 1}: ${r.url}
+- **Tokens:** ${r.tokensUsed}
+- **Cost:** $${r.cost.toFixed(4)}
+- **Status:** ${r.error ? `❌ ${r.error}` : '✅ Success'}
+${r.summary ? `- **Summary Preview:** ${r.summary.substring(0, 200)}...` : ''}
+`).join('\n')}
+`).join('\n')}
+
+## Recommendations
+
+${evaluationResults.map(result => `
+### ${result.modelInfo.name}
+- **Best for:** ${result.modelInfo.recommended_for.join(", ")}
+- **Cost efficiency:** $${(result.totalCost / result.totalTokens * 1000).toFixed(4)} per 1k tokens
+- **Quality score:** ${result.results.filter(r => !r.error).length}/${urls.length} success rate
+`).join('\n')}
+
+---
+*Generated by Model Evaluation Tool*`;
+
+await fs.writeFile(reportPath, reportContent, "utf-8");
+
+// Save structured data for analysis
+const jsonPath = path.join(reportDir, "evaluation_data.json");
+await fs.writeFile(jsonPath, JSON.stringify({
+  metadata: {
+    generated: new Date().toISOString(),
+    profile: config.evaluationProfile,
+    urlsTested: urls.length,
+    modelsTested: config.modelsToTest
+  },
+  results: evaluationResults
+}, null, 2), "utf-8");
+
+console.log(`📋 Evaluation report saved: ${reportPath}`);
+console.log(`📊 Structured data saved: ${jsonPath}`);
+
+// Generate CSV for spreadsheet analysis
+const csvPath = path.join(reportDir, "evaluation_results.csv");
+const csvHeader = "Model,Model Name,URL,Tokens Used,Cost,Success,Error Message\n";
+const csvRows = evaluationResults.flatMap(result => 
+  result.results.map(r => 
+    `"${result.model}","${result.modelInfo.name}","${r.url}",${r.tokensUsed},${r.cost.toFixed(6)},"${r.error ? 'No' : 'Yes'}","${r.error || ''}"`
+  )
+).join("\n");
+
+await fs.writeFile(csvPath, csvHeader + csvRows, "utf-8");
+console.log(`📈 CSV data saved: ${csvPath}`);
+
+console.log(`\n🎉 Model evaluation complete!`);
+console.log(`📁 Results saved to: ${reportDir}`);
+
+// Explicit exit
+process.exit(0);
