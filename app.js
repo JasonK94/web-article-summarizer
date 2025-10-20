@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import puppeteer from "puppeteer";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
 
 // Load configuration
@@ -11,7 +12,9 @@ const profiles = JSON.parse(await fs.readFile("config/profiles.json", "utf-8"));
 const config = {
   chromeUserData: process.env.CHROME_USER_DATA || "C:/Users/USER/AppData/Local/Google/Chrome/User Data",
   chromeProfile: process.env.CHROME_PROFILE || "Default",
+  provider: (process.env.PROVIDER || "openai").toLowerCase(),
   openaiModel: process.env.OPENAI_MODEL || "gpt-4o-mini",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-1.5-pro",
   summaryProfile: process.env.SUMMARY_PROFILE || "investor",
   timeout: 120000,
   outputFormat: process.env.OUTPUT_FORMAT || "markdown",
@@ -37,14 +40,13 @@ console.log(`💰 Estimated cost: $${model.cost_per_1k_tokens}/1k tokens\n`);
 const urls = (await fs.readFile("urls.txt", "utf-8"))
   .split("\n").map(s => s.trim()).filter(Boolean);
 
-// Create model-specific output directory to prevent overriding
-const modelDir = config.openaiModel.replace(/[^\w\-]/g, "_");
-const profileDir = config.summaryProfile;
-const outDir = path.resolve("output", modelDir, profileDir);
+// Unified output directory (no per-model subfolders) for easier comparisons
+const outDir = path.resolve("output");
 await fs.mkdir(outDir, { recursive: true });
 
-// Initialize OpenAI client
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize clients per provider
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genai = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 // Launch browser
 let browserArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
@@ -67,6 +69,50 @@ console.log(`\n📊 Processing ${urls.length} URLs...\n`);
 // Array to store all summaries for CSV output
 const allSummaries = [];
 let totalTokens = 0;
+
+// Build a unified list of all possible section names across profiles for CSV columns
+const allSectionNames = Array.from(
+  new Set(
+    Object.values(profiles.profiles)
+      .flatMap(p => p.format?.sections || [])
+  )
+);
+
+function extractSourceFromUrl(articleUrl) {
+  try {
+    const u = new URL(articleUrl);
+    const host = u.hostname.replace(/^www\./, "");
+    return host;
+  } catch {
+    return "unknown";
+  }
+}
+
+function parseSections(summaryText, expectedSections) {
+  if (!summaryText) return {};
+  const lines = summaryText.split(/\r?\n/);
+  const sections = {};
+  let current = null;
+  const normalizedHeaders = new Set(expectedSections.map(s => s.toLowerCase()));
+  for (const line of lines) {
+    const trimmed = line.trim().replace(/^#+\s*/, "");
+    if (!trimmed) continue;
+    // If line matches any expected section header (case-insensitive), switch context
+    if (normalizedHeaders.has(trimmed.toLowerCase())) {
+      current = trimmed;
+      if (!sections[current]) sections[current] = [];
+      continue;
+    }
+    if (current) {
+      sections[current].push(line);
+    }
+  }
+  // Join arrays into strings
+  for (const key of Object.keys(sections)) {
+    sections[key] = sections[key].join("\n").trim();
+  }
+  return sections;
+}
 
 // Process each URL
 for (let i = 0; i < urls.length; i++) {
@@ -135,17 +181,20 @@ for (let i = 0; i < urls.length; i++) {
     
     console.log(`${progress} 📄 Extracted ${cleanContent.length} characters`);
     
-    // Generate summary using OpenAI
-    const summaryResponse = await client.chat.completions.create({
-      model: config.openaiModel,
-      messages: [
-        {
-          role: "system",
-          content: profile.system_prompt
-        },
-        {
-          role: "user",
-          content: `Please analyze this article using the ${profile.name} format:
+    // Generate summary using selected provider
+    let summary = "";
+    let tokensUsed = 0;
+    if (config.provider === "openai") {
+      const summaryResponse = await openai.chat.completions.create({
+        model: config.openaiModel,
+        messages: [
+          {
+            role: "system",
+            content: profile.system_prompt
+          },
+      {
+        role: "user",
+            content: `Please analyze this article using the ${profile.name} format:
 
 Title: ${articleData.title}
 URL: ${url}
@@ -155,18 +204,30 @@ ${cleanContent}
 
 Please structure your response according to these sections:
 ${profile.format.sections.map(s => `- ${s}`).join('\n')}`
-        }
-      ],
-      max_tokens: profile.max_tokens,
-      temperature: profile.temperature
-    });
-    
-    const summary = summaryResponse.choices[0].message.content;
-    const tokensUsed = summaryResponse.usage?.total_tokens || 0;
+          }
+        ],
+        max_tokens: profile.max_tokens,
+        temperature: profile.temperature
+      });
+      summary = summaryResponse.choices[0].message.content;
+      tokensUsed = summaryResponse.usage?.total_tokens || 0;
+    } else if (config.provider === "gemini") {
+      if (!genai) throw new Error("GEMINI_API_KEY not set");
+      const model = genai.getGenerativeModel({ model: config.geminiModel });
+      const prompt = `System: ${profile.system_prompt}\n\nUser: Please analyze this article using the ${profile.name} format.\n\nTitle: ${articleData.title}\nURL: ${url}\n\nContent:\n${cleanContent}\n\nPlease structure your response according to these sections:\n${profile.format.sections.map(s => `- ${s}`).join('\n')}`;
+      const resp = await model.generateContent(prompt);
+      summary = resp.response.text();
+      tokensUsed = 0; // Gemini token usage not available from this SDK in detail
+    } else {
+      throw new Error(`Unsupported provider: ${config.provider}`);
+    }
     totalTokens += tokensUsed;
     
     console.log(`${progress} ✅ Generated summary (${tokensUsed} tokens)`);
     
+    // Parse per-section content for structured comparison
+    const sectionsMap = parseSections(summary, allSectionNames);
+
     // Store summary data
     const summaryData = {
       title: articleData.title,
@@ -176,7 +237,10 @@ ${profile.format.sections.map(s => `- ${s}`).join('\n')}`
       contentLength: cleanContent.length,
       tokensUsed: tokensUsed,
       profile: config.summaryProfile,
-      model: config.openaiModel
+      model: config.openaiModel,
+      source: extractSourceFromUrl(url),
+      sections: sectionsMap,
+      cost: tokensUsed * (profiles.models[config.openaiModel]?.cost_per_1k_tokens || 0) / 1000
     };
     
     allSummaries.push(summaryData);
@@ -220,10 +284,33 @@ ${summary}
     };
     await fs.writeFile(jsonPath, JSON.stringify(jsonContent, null, 2), "utf-8");
     
-    // Save as CSV for spreadsheet analysis
-    const csvPath = path.join(outDir, `${safeUrl}.csv`);
-    const csvContent = `Title,URL,Processed,Summary,Content Length,Tokens Used,Profile,Model,Cost\n"${articleData.title}","${url}","${summaryData.processed}","${summary.replace(/"/g, '""')}",${cleanContent.length},${tokensUsed},"${config.summaryProfile}","${config.openaiModel}",${(tokensUsed * model.cost_per_1k_tokens / 1000).toFixed(6)}`;
-    await fs.writeFile(csvPath, csvContent, "utf-8");
+    // Save as CSV for spreadsheet analysis (row-level file)
+    const csvPath = path.join(outDir, `${safeUrl}.${config.openaiModel}.csv`);
+    const headerCols = [
+      "No","Timestamp","Source","URL","Title","Content Length","Tokens Used","Profile","Model","Cost","Summary",
+      ...allSectionNames
+    ];
+    // Build a single-row CSV with proper quoting
+    const buildCsvRow = (row) => row.map(v => {
+      const s = (v ?? "").toString();
+      return `"${s.replace(/"/g, '""')}"`;
+    }).join(",");
+    const rowValues = [
+      1, // placeholder for single-file row
+      summaryData.processed,
+      summaryData.source,
+      url,
+      articleData.title,
+      cleanContent.length,
+      tokensUsed,
+      config.summaryProfile,
+      config.openaiModel,
+      (tokensUsed * model.cost_per_1k_tokens / 1000).toFixed(6),
+      summary,
+      ...allSectionNames.map(name => summaryData.sections[name] || "")
+    ];
+    const singleCsv = headerCols.join(",") + "\n" + buildCsvRow(rowValues) + "\n";
+    await fs.writeFile(csvPath, singleCsv, "utf-8");
     
     await page.close();
     
@@ -237,16 +324,38 @@ ${summary}
 
 // Save consolidated output in multiple formats
 if (allSummaries.length > 0) {
-  // Save consolidated CSV for spreadsheet analysis
-  const csvHeader = "Title,URL,Processed,Summary,Content Length,Tokens Used,Profile,Model,Cost\n";
-  const csvRows = allSummaries.map(s => 
-    `"${s.title}","${s.url}","${s.processed}","${s.summary.replace(/"/g, '""')}",${s.contentLength},${s.tokensUsed},"${s.profile}","${s.model}",${(s.tokensUsed * model.cost_per_1k_tokens / 1000).toFixed(6)}`
-  ).join("\n");
-  
-  const consolidatedCsv = csvHeader + csvRows;
-  const csvPath = path.join(outDir, "all_summaries.csv");
-  await fs.writeFile(csvPath, consolidatedCsv, "utf-8");
-  console.log(`\n📊 Consolidated CSV saved: ${csvPath}`);
+  // Unified aggregator CSV across runs: output/all_runs.csv
+  const aggregatorPath = path.join(outDir, "all_runs.csv");
+  const headerCols = [
+    "No","Timestamp","Source","URL","Title","Content Length","Tokens Used","Profile","Model","Cost","Summary",
+    ...allSectionNames
+  ];
+  const buildCsvRow = (row) => row.map(v => {
+    const s = (v ?? "").toString();
+    return `"${s.replace(/"/g, '""')}"`;
+  }).join(",");
+  let existingLines = 0;
+  try {
+    const existing = await fs.readFile(aggregatorPath, "utf-8");
+    existingLines = Math.max(0, existing.split(/\r?\n/).filter(Boolean).length - 1);
+  } catch {}
+  const rows = allSummaries.map((s, idx) => buildCsvRow([
+    existingLines + idx + 1,
+    s.processed,
+    s.source,
+    s.url,
+    s.title,
+    s.contentLength,
+    s.tokensUsed,
+    s.profile,
+    s.model,
+    (s.cost ?? (s.tokensUsed * (profiles.models[s.model]?.cost_per_1k_tokens || 0) / 1000)).toFixed(6),
+    s.summary,
+    ...allSectionNames.map(name => s.sections?.[name] || "")
+  ]));
+  const csvBlock = (existingLines === 0 ? headerCols.join(",") + "\n" : "") + rows.join("\n") + "\n";
+  await fs.appendFile(aggregatorPath, csvBlock, "utf-8");
+  console.log(`\n📊 Unified CSV updated: ${aggregatorPath}`);
   
   // Save consolidated JSON for programmatic analysis
   const jsonData = {
@@ -265,13 +374,17 @@ if (allSummaries.length > 0) {
       summary: s.summary,
       contentLength: s.contentLength,
       tokensUsed: s.tokensUsed,
-      cost: s.tokensUsed * model.cost_per_1k_tokens / 1000
+      cost: s.tokensUsed * model.cost_per_1k_tokens / 1000,
+      source: s.source,
+      profile: s.profile,
+      model: s.model,
+      sections: s.sections
     }))
   };
   
-  const jsonPath = path.join(outDir, "all_summaries.json");
+  const jsonPath = path.join(outDir, "last_run.json");
   await fs.writeFile(jsonPath, JSON.stringify(jsonData, null, 2), "utf-8");
-  console.log(`📋 Consolidated JSON saved: ${jsonPath}`);
+  console.log(`📋 Last run JSON saved: ${jsonPath}`);
   
   // Save summary report
   const reportPath = path.join(outDir, "summary_report.md");

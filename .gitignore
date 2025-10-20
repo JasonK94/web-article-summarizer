@@ -5,6 +5,7 @@
 
 # Output directories
 output/
+evaluation/
 archive/
 
 # Node modules

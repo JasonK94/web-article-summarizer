@@ -73,6 +73,32 @@
       "temperature": 0.4
     }
   },
+  "assessors": {
+    "professor": {
+      "name": "Intelligent Professor",
+      "criteria": ["fidelity","accuracy","sources","methodology","nuance"],
+      "system_prompt": "You are a rigorous academic evaluator. Assess summaries for fidelity to the source, methodological soundness, and nuance.",
+      "weights": {"fidelity":0.35,"accuracy":0.25,"sources":0.15,"methodology":0.15,"nuance":0.10}
+    },
+    "business_guru": {
+      "name": "Business Genius",
+      "criteria": ["actionability","insight","clarity","impact","brevity"],
+      "system_prompt": "You are a top-tier business operator. Evaluate for actionable insights, strategic clarity, and brevity.",
+      "weights": {"actionability":0.3,"insight":0.25,"clarity":0.2,"impact":0.15,"brevity":0.1}
+    },
+    "investor": {
+      "name": "Investor Assessor",
+      "criteria": ["market_impact","financials","risk","opportunities","tldr"],
+      "system_prompt": "You are a seasoned investor. Evaluate market impact, financial implications, risks, and TL;DR quality.",
+      "weights": {"market_impact":0.25,"financials":0.25,"risk":0.2,"opportunities":0.2,"tldr":0.1}
+    },
+    "general": {
+      "name": "General Audience",
+      "criteria": ["readability","engagement","clarity","usefulness"],
+      "system_prompt": "You represent the general audience. Evaluate readability, clarity, engagement, and usefulness.",
+      "weights": {"readability":0.35,"clarity":0.3,"engagement":0.2,"usefulness":0.15}
+    }
+  },
   "models": {
     "gpt-4o": {
       "name": "GPT-4 Omni",

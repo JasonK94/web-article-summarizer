@@ -51,9 +51,12 @@ A powerful Node.js tool that scrapes web articles (including paywalled content) 
 ```bash
 # Required
 OPENAI_API_KEY=your_api_key_here
+PROVIDER=openai            # openai | gemini
 
 # Optional
 OPENAI_MODEL=gpt-4o-mini          # Model to use
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-1.5-pro
 SUMMARY_PROFILE=investor          # Profile: researcher, investor, executive, student
 OUTPUT_FORMAT=markdown           # Output: markdown or csv
 USE_TEMP_PROFILE=true           # Use temporary Chrome profile
@@ -130,6 +133,50 @@ echo "https://site1.com/article1" >> urls.txt
 echo "https://site2.com/article2" >> urls.txt
 npm start
 ```
+
+### CLI Options
+
+You can run the tool with command-line overrides:
+
+```bash
+node app.js \
+  --provider openai \
+  --model gpt-4o-mini gpt-3.5-turbo \
+  --profile investor researcher \
+  --article 1 2 3 \
+  --duplicate false
+```
+
+- `--provider`: `openai` or `gemini`
+- `--model`: one or multiple models. Use `all` to run all configured.
+- `--profile`: one or multiple profiles. Use `all` to run all configured.
+- `--article`: list of article indices from `urls.csv`/`urls.txt`. If `--model` or `--profile` is `all`, default to a single article to save tokens.
+- `--duplicate`: when false (default), skip if the same article+model+profile result already exists (based on hash key).
+
+### URLs Input
+
+Support `urls.txt` (one URL per line) or `urls.csv` with header `id,url`:
+
+```csv
+id,url
+1,https://example.com/a
+2,https://example.com/b
+```
+
+The script de-duplicates URLs before processing and can skip already-summarized combinations by hash.
+
+### Evaluators
+
+Evaluator profiles are defined in `config/profiles.json` under `assessors`. Run the evaluator tool:
+
+```bash
+node evaluate-models.js
+```
+
+Outputs:
+- `evaluation/model_evaluation_report.md`
+- `evaluation/evaluation_data.json`
+- `evaluation/evaluation_results.csv`
 
 ## 🛠️ Troubleshooting
 

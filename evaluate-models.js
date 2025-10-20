@@ -179,7 +179,7 @@ const csvPath = path.join(reportDir, "evaluation_results.csv");
 const csvHeader = "Model,Model Name,URL,Tokens Used,Cost,Success,Error Message\n";
 const csvRows = evaluationResults.flatMap(result => 
   result.results.map(r => 
-    `"${result.model}","${result.modelInfo.name}","${r.url}",${r.tokensUsed},${r.cost.toFixed(6)},"${r.error ? 'No' : 'Yes'}","${r.error || ''}"`
+    `"${result.model}","${result.modelInfo.name}","${r.url}",${r.tokensUsed},${r.cost.toFixed(6)},"${r.error ? 'No' : 'Yes'}","${(r.error || '').replace(/"/g, '""')}"`
   )
 ).join("\n");
 
