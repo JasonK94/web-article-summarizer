@@ -93,10 +93,20 @@
       "weights": {"market_impact":0.25,"financials":0.25,"risk":0.2,"opportunities":0.2,"tldr":0.1}
     },
     "general": {
-      "name": "General Audience",
-      "criteria": ["readability","engagement","clarity","usefulness"],
-      "system_prompt": "You represent the general audience. Evaluate readability, clarity, engagement, and usefulness.",
-      "weights": {"readability":0.35,"clarity":0.3,"engagement":0.2,"usefulness":0.15}
+      "name": "a general audience member",
+      "criteria": ["Clarity", "Conciseness", "Interest"],
+      "system_prompt": "You are a member of the general public. You value clear, concise, and engaging summaries that are easy to understand without prior knowledge.",
+      "weights": {"Clarity": 0.5, "Conciseness": 0.4, "Interest": 0.1}
+    }
+  },
+  "enhancers": {
+    "professional": {
+      "name": "Make More Professional",
+      "system_prompt": "You are an expert editor for a prestigious financial journal. Your task is to revise the following summary to enhance its professionalism, clarity, and impact. Use sophisticated vocabulary, ensure a logical flow, and maintain an objective, authoritative tone. Only return the revised summary text."
+    },
+    "simple": {
+      "name": "Simplify for a General Audience",
+      "system_prompt": "You are an editor focused on making complex topics accessible. Your task is to revise the following summary to be easily understood by a general audience with no prior knowledge of the subject. Use simple language, break down jargon, and focus on the key takeaways. Only return the revised summary text."
     }
   },
   "models": {
@@ -148,6 +158,20 @@
       "cost_per_1k_tokens": 0.003,
       "max_tokens": 4096,
       "recommended_for": ["investor", "student"]
+    },
+    "gemini-2.5-flash": {
+      "name": "Gemini 2.5 Flash",
+      "description": "Google Gemini 2.5 Flash (fast/efficient)",
+      "cost_per_1k_tokens": 0.0,
+      "max_tokens": 1048576,
+      "recommended_for": ["investor", "student", "executive"]
+    },
+    "gemini-2.5-pro": {
+      "name": "Gemini 2.5 Pro",
+      "description": "Google Gemini 2.5 Pro (reasoning, long context)",
+      "cost_per_1k_tokens": 0.0,
+      "max_tokens": 1048576,
+      "recommended_for": ["researcher", "executive"]
     }
   }
 }

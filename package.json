@@ -12,9 +12,11 @@
   "license": "ISC",
   "description": "A tool to scrape and summarize web articles using OpenAI",
   "dependencies": {
-    "dotenv": "^17.2.3",
-    "openai": "^6.5.0",
-    "puppeteer": "^24.25.0",
-    "@google/generative-ai": "^0.21.0"
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "openai": "^4.52.7",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-humanize": "^0.2.2",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }

@@ -1,7 +1,13 @@
 import fs from "fs/promises";
 import path from "path";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
+
+const runId = new Date().toISOString().replace(/[:.]/g, '-');
+// Note: Can't use logger here as it's not a module. Basic console logging.
+console.log(JSON.stringify({ ts: new Date().toISOString(), tag: "run:start", script: process.argv[1], args: process.argv.slice(2), runId }));
+
 
 // Load configuration
 const profiles = JSON.parse(await fs.readFile("config/profiles.json", "utf-8"));
@@ -188,6 +194,7 @@ console.log(`📈 CSV data saved: ${csvPath}`);
 
 console.log(`\n🎉 Model evaluation complete!`);
 console.log(`📁 Results saved to: ${reportDir}`);
+console.log(JSON.stringify({ ts: new Date().toISOString(), tag: "run:end", script: process.argv[1], runId, filesCreated: 3 }));
 
 // Explicit exit
 process.exit(0);
