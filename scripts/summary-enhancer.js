@@ -59,7 +59,7 @@ async function enhanceSummary(provider, model, systemPrompt, summary) {
       model,
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
       temperature: 0.5,
-      max_tokens: 2000
+      // max_tokens: 2000 // Deprecated for some models
     });
     enhancedSummary = resp.choices[0].message.content;
     tokensUsed = resp.usage.total_tokens;

@@ -41,19 +41,20 @@ async function moveMouseLikeHuman(page) {
 
 function extractHost(u){ try{ return new URL(u).hostname.replace(/^www\./,''); }catch{ return 'unknown'; } }
 
-async function loadUrlList(){
+async function loadUrls() {
+  const urlsCsvPath = path.resolve("input", "urls.csv");
+  const urlsTxtPath = path.resolve("input", "urls.txt");
+  let items = [];
   try {
-    const csv = await fs.readFile("urls.csv","utf-8");
+    const csv = await fs.readFile(urlsCsvPath,"utf-8");
     const lines = csv.split(/\r?\n/).filter(Boolean);
-    const out = [];
     for (let i=1;i<lines.length;i++){
       const parts = lines[i].split(/,(.+)/);
       if (!parts[1]) continue;
-      out.push({ id: parts[0].trim(), url: parts[1].trim() });
+      items.push({ id: parts[0].trim(), url: parts[1].trim() });
     }
-    return out;
   } catch {}
-  const txt = (await fs.readFile("urls.txt","utf-8")).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const txt = (await fs.readFile(urlsTxtPath,"utf-8")).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   return txt.map((u,i)=>({ id: String(i+1), url: u }));
 }
 
@@ -64,7 +65,7 @@ try { await fs.access(indexPath); } catch { await fs.writeFile(indexPath, "id,ti
 
 puppeteerExtra.use(StealthPlugin());
 
-const urls = await loadUrlList();
+const urls = await loadUrls();
 await logEvent({ tag: "harvest:start", count: urls.length });
 const bump = makeRateCounter();
 const recentRequestTimestamps = [];
@@ -152,12 +153,22 @@ for (let i=0;i<urls.length;i++){
     await sleep(randInt(config.minDelayMs, config.maxDelayMs));
     await moveMouseLikeHuman(page);
 
-    // Move mouse over a RANDOM element to simulate reading
-    const hoverableElements = await page.$$('p, h2, a, img');
+    // Move mouse over a RANDOM, VISIBLE element to simulate reading
+    const hoverableElements = await page.$$('a, h1, h2, h3, p');
     if (hoverableElements.length > 0) {
-      const randomEl = hoverableElements[Math.floor(Math.random() * hoverableElements.length)];
-      await randomEl.hover();
-      await sleep(randInt(500, 1500));
+      let randomEl = null;
+      for (let i = 0; i < 5; i++) { // Try up to 5 times to find a visible element
+        const el = hoverableElements[Math.floor(Math.random() * hoverableElements.length)];
+        if (await el.isIntersectingViewport()) {
+          randomEl = el;
+          break;
+        }
+      }
+      
+      if (randomEl) {
+        await randomEl.hover();
+        await sleep(randInt(500, 1500));
+      }
     }
 
     // Scroll down multiple times, with a chance to scroll up slightly

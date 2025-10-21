@@ -1,6 +1,18 @@
 import fs from "fs/promises";
 import path from "path";
 
+const profiles = await loadProfiles();
+
+async function loadProfiles() {
+  try {
+    const data = await fs.readFile(path.resolve(process.cwd(), "config/profiles.json"), "utf-8");
+    return JSON.parse(data);
+  } catch (e) {
+    console.error("Could not load profiles.json. Some features may not work.", e.message);
+    return {};
+  }
+}
+
 const logsDir = path.resolve("logs");
 await fs.mkdir(logsDir, { recursive: true });
 

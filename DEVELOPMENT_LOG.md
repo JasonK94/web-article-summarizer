@@ -43,3 +43,29 @@ This document tracks the major development and debugging phases of the web artic
   2. **Resolve OS-level Network Routing**: A more complex solution involving changing the OS's network settings to ensure all traffic from the user's profile is forced through the VPN, though this seems less reliable.
 
 **Core Lesson Learned**: **Verify, don't assume.** We assumed the VPN was working for the script because it worked for the user's manual browser. A simple diagnostic test (`check-ip.js`) at the beginning would have saved days of effort spent on solving the wrong problem (behavioral analysis).
+
+---
+
+# Project: DataDome Bypass Toy Project (Playwright)
+
+This project was a focused effort to explore modern anti-bot bypass techniques using Playwright, moving beyond the IP-related issues discovered in the previous project.
+
+## v4: The Human Simulation Era (Playwright & Ghost-Cursor)
+
+- **Intent**: To build a toy project based on a [Kameleo blog post](https://kameleo.io/blog/guide-to-bypassing-datadome), using Playwright and `ghost-cursor` to mimic human behavior and test against known DataDome-protected sites.
+- **Strategy**:
+  1. Start with simpler targets (`Footlocker`, `Ticketmaster`) to establish a baseline for handling common obstacles like cookie consent banners.
+  2. Escalate to a known difficult target, `allegro.pl`, to test the robustness of the solution.
+  3. Use `ghost-cursor` to generate realistic, non-linear mouse movements for all interactions.
+- **Result**: The script successfully handled basic interactions on the initial sites but was completely stopped by a complex, multi-stage CAPTCHA on `allegro.pl`. The initial script was unable to even detect the challenge.
+
+## v5: The CAPTCHA Arms Race (Computer Vision & Multi-Stage Logic)
+
+- **Analysis**: The breakthrough came from direct user feedback, which revealed the CAPTCHA process: an initial "Confirm" button followed by a slider puzzle. This highlighted the limitations of purely automated analysis for complex, interactive challenges. The `net::ERR_ABORTED` navigation error was correctly re-diagnosed as DataDome's script interception, not a simple network failure.
+- **Strategy**:
+  1. **Multi-Stage Handling**: Developed a dedicated function (`handleFullCaptchaProcess`) to manage the sequential nature of the CAPTCHA.
+  2. **Computer Vision (CV)**: Implemented a CV-based slider solver (`solveSliderCaptcha`) using the `jimp` library. This involved screenshotting the puzzle, programmatically identifying the target location, and calculating the required drag distance.
+  3. **Low-Level Interaction**: Replaced `ghost-cursor`'s high-level `dragAndDrop` with a more reliable low-level sequence of Playwright mouse events (`mouse.down`, `mouse.move`, `mouse.up`) to work around library-specific errors.
+- **Result**: The final script successfully integrated the multi-stage CAPTCHA logic. However, it still failed with a `TimeoutError` on `allegro.pl`. This suggests that DataDome employs further countermeasures (e.g., dynamic rendering that prevents the page from reaching a stable `networkidle` state) that disrupt the script's ability to interact with page elements, even after the primary CAPTCHA challenge is addressed.
+
+**Core Lesson Learned**: Bypassing advanced bot protection is a multi-layered problem. While solving the visible CAPTCHA is a major part, success also depends on surviving a hostile JavaScript environment designed to detect and disrupt automation at every step. For these complex cases, collaborative debugging (human observation + AI implementation) is far more effective than relying on purely automated attempts.

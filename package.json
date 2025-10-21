@@ -2,21 +2,28 @@
   "name": "web-article-summarizer",
   "version": "1.0.0",
   "type": "module",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node scripts/app.js",
+    "start:gui": "node server.js",
+    "harvest": "node scripts/harvest.js",
+    "summarize": "node scripts/app.js",
+    "summarize:sources": "node scripts/sources-run.js"
   },
-  "keywords": ["web-scraping", "summarization", "news", "automation"],
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "A tool to scrape and summarize web articles using OpenAI",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cheerio": "^1.1.2",
     "csv-parse": "^5.5.6",
+    "csv-stringify": "^6.6.0",
     "dotenv": "^16.4.5",
+    "express": "^5.1.0",
     "openai": "^4.52.7",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-humanize": "^0.2.2",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "socket.io": "^4.8.1"
   }
 }

@@ -1,0 +1,23 @@
+{
+  "name": "datadome-bypass-toy-project",
+  "version": "1.0.0",
+  "description": "A toy project to demonstrate bypassing DataDome using Playwright and ghost-cursor, based on the Kameleo blog post.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "datadome",
+    "bypass",
+    "web-scraping",
+    "playwright",
+    "ghost-cursor"
+  ],
+  "author": "AI Assistant",
+  "license": "MIT",
+  "dependencies": {
+    "ghost-cursor": "^1.1.8",
+    "jimp": "^0.22.12",
+    "playwright": "^1.40.1"
+  }
+}

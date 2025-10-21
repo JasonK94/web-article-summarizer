@@ -79,7 +79,7 @@ async function assessOne(provider, model, assessorKey, title, summary){
         { role: "user", content: prompt }
       ],
       temperature: 0.3,
-      max_tokens: 800
+      // max_tokens: 800 // Deprecated for some models
     });
     text = resp.choices[0].message.content;
     tokensUsed = resp.usage.total_tokens;

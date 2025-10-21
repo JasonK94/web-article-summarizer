@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Article Summarizer Control Panel</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        .controls, .output { margin-bottom: 2em; }
+        button { margin-right: 1em; padding: 0.5em 1em; }
+        #log-container {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            height: 400px;
+            overflow-y: scroll;
+            padding: 1em;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Web Article Summarizer Control Panel</h1>
+
+    <div class="controls">
+        <h2>Actions</h2>
+        <button id="run-harvest">Harvest Articles</button>
+        <button id="run-summarize">Summarize Articles</button>
+        <button id="run-sources">Summarize from Sources</button>
+    </div>
+
+    <div class="output">
+        <h2>Live Log</h2>
+        <div id="log-container"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const logContainer = document.getElementById('log-container');
+
+        socket.on('log', (message) => {
+            logContainer.textContent += message;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        });
+
+        function startScript(scriptName) {
+            logContainer.textContent = `--- Starting ${scriptName}.js ---\n`;
+            socket.emit('run-script', scriptName);
+        }
+
+        document.getElementById('run-harvest').addEventListener('click', () => {
+            startScript('harvest');
+        });
+
+        document.getElementById('run-summarize').addEventListener('click', () => {
+            startScript('app'); // Corresponds to app.js
+        });
+
+        document.getElementById('run-sources').addEventListener('click', () => {
+            startScript('sources-run');
+        });
+    </script>
+</body>
+</html>
