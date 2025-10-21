@@ -4,7 +4,9 @@ import puppeteer from "puppeteer";
 import puppeteerExtra from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import "dotenv/config";
-import { logEvent, logServer, makeRateCounter } from "./logger.js";
+import { logEvent, logServer, makeRateCounter, setupGlobalErrorHandling } from "./logger.js";
+
+setupGlobalErrorHandling();
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 await logEvent({ tag: "run:start", script: process.argv[1], args: process.argv.slice(2), runId });

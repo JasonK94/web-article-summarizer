@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { composeForSns } from './sns-composer.js';
+import { logEvent } from './logger.js';
 
-const contentFilePath = path.join(process.cwd(), 'output', 'https_www_wsj_com_business_ballmer-clippers-leonard-sanberg-aspiration-49924b19_mod_hp_lead_pos7_1.manual.md');
 const outputDir = path.join(process.cwd(), 'output', 'sns-posts');
 
 /**
@@ -13,6 +13,22 @@ function ensureDirectoryExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
+}
+
+/**
+ * Finds a unique directory path by appending a number if the directory already exists.
+ * @param {string} baseDir - The base directory path.
+ * @returns {string} A unique directory path.
+ */
+function getUniqueOutputDir(baseDir) {
+  if (!fs.existsSync(baseDir)) {
+    return baseDir;
+  }
+  let i = 1;
+  while (fs.existsSync(`${baseDir}_${i}`)) {
+    i++;
+  }
+  return `${baseDir}_${i}`;
 }
 
 /**
@@ -48,26 +64,65 @@ function writeSnsContentToFile(baseDir, snsContent) {
 }
 
 
-try {
-  ensureDirectoryExists(outputDir);
-  const rawContent = fs.readFileSync(contentFilePath, 'utf-8');
+/**
+ * Main function to generate SNS content.
+ * @param {string} contentFilePath - Path to the content file.
+ */
+async function generateSnsContent(contentFilePath) {
+  try {
+    ensureDirectoryExists(outputDir);
+    const rawContent = fs.readFileSync(contentFilePath, 'utf-8');
+    
+    // Extract just the English summary
+    const englishSummaryMatch = rawContent.match(/## English Summary([\s\S]*?)## Korean Summary/);
+    if (!englishSummaryMatch || !englishSummaryMatch[1]) {
+      console.error('Could not find English summary in the content file.');
+      return;
+    }
+    const englishSummary = englishSummaryMatch[1];
   
-  // Extract just the English summary
-  const englishSummary = rawContent.split('## English Summary')[1].split('## Korean Summary')[0];
+    const platformsToGenerate = ['x', 'threads', 'linkedin', 'facebook'];
+    
+    const articleBaseName = path.basename(contentFilePath, '.manual.md');
+    const articleOutputDir = getUniqueOutputDir(path.join(outputDir, articleBaseName));
+    ensureDirectoryExists(articleOutputDir);
 
-  const platformsToGenerate = ['x', 'threads', 'linkedin', 'facebook'];
+    console.log('Generating SNS content...');
   
-  console.log('Generating SNS content...');
+    for (const platform of platformsToGenerate) {
+      const snsContent = composeForSns(englishSummary, platform);
+      writeSnsContentToFile(articleOutputDir, snsContent);
+      console.log(`- Generated content for ${platform}`);
+    }
 
-  for (const platform of platformsToGenerate) {
-    const snsContent = composeForSns(englishSummary, platform);
-    const articleOutputDir = path.join(outputDir, path.basename(contentFilePath, '.manual.md'));
-    writeSnsContentToFile(articleOutputDir, snsContent);
-    console.log(`- Generated content for ${platform}`);
+    const logMessage = {
+      event: 'sns_content_generation',
+      inputFile: contentFilePath,
+      outputDir: articleOutputDir,
+      platforms: platformsToGenerate,
+      status: 'success'
+    };
+    await logEvent(logMessage);
+  
+    console.log(`\n✅ SNS content generated successfully in:\n${articleOutputDir}`);
+  
+  } catch (error) {
+    console.error('❌ Error generating SNS content:', error.message);
+    const logMessage = {
+      event: 'sns_content_generation',
+      inputFile: contentFilePath,
+      status: 'error',
+      error: error.message,
+    };
+    await logEvent(logMessage);
   }
-
-  console.log(`\n✅ SNS content generated successfully in:\n${path.join(outputDir, path.basename(contentFilePath, '.manual.md'))}`);
-
-} catch (error) {
-  console.error('❌ Error generating SNS content:', error.message);
 }
+
+// Check for command-line argument for the content file
+if (process.argv.length < 3) {
+  console.error('Usage: node scripts/generate-sns-content.js <path_to_content_file>');
+  process.exit(1);
+}
+
+const contentFilePath = process.argv[2];
+generateSnsContent(contentFilePath);

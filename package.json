@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node scripts/app.js",
-    "start:gui": "node server.js",
+    "start:gui": "node scripts/server.js",
     "harvest": "node scripts/harvest.js",
     "summarize": "node scripts/app.js",
     "summarize:sources": "node scripts/sources-run.js"

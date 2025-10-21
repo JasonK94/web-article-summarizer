@@ -82,4 +82,27 @@ export function makeRateCounter(windowsMs = [1000, 5000, 10000, 60000, 300000, 3
   };
 }
 
+export function setupGlobalErrorHandling() {
+  const errorLogPath = path.join(logsDir, "error.log");
+
+  const handleError = async (error, origin) => {
+    const timestamp = new Date().toISOString();
+    const errorMessage = `${timestamp} - ${origin}\n${error.stack || error}\n\n`;
+    
+    console.error(`An unhandled error occurred. Details logged to ${errorLogPath}`);
+    
+    try {
+      await fs.appendFile(errorLogPath, errorMessage, "utf-8");
+    } catch (e) {
+      console.error("Failed to write to error log:", e.message);
+    }
+
+    // It's generally recommended to exit after an uncaught exception
+    process.exit(1);
+  };
+
+  process.on('uncaughtException', (err) => handleError(err, 'uncaughtException'));
+  process.on('unhandledRejection', (reason) => handleError(reason, 'unhandledRejection'));
+}
+
 

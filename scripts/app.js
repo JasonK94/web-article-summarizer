@@ -7,7 +7,9 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import crypto from "crypto";
 import "dotenv/config";
-import { logEvent, logServer, makeRateCounter, logApiUsage } from "./logger.js";
+import { logEvent, logServer, makeRateCounter, logApiUsage, setupGlobalErrorHandling } from "./logger.js";
+
+setupGlobalErrorHandling();
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));

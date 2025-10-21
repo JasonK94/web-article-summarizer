@@ -7,7 +7,9 @@ import crypto from "crypto";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
-import { logEvent, logApiUsage } from "./logger.js";
+import { logEvent, logApiUsage, setupGlobalErrorHandling } from "./logger.js";
+
+setupGlobalErrorHandling();
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 await logEvent({ tag: "run:start", script: process.argv[1], args: process.argv.slice(2), runId });
