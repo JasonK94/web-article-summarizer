@@ -241,6 +241,31 @@ async function main() {
     console.log("No existing processed content file found. A new one will be created.");
   }
 
+  // --- Load pre-scraped content from sources.csv ---
+  const sourcesPath = path.join(RAW_DIR, "sources.csv");
+  const sourcesData = new Map();
+  try {
+      const sourcesCsv = await fs.readFile(sourcesPath, "utf-8");
+      const sourceRecords = csvParse(sourcesCsv, { columns: true, skip_empty_lines: true });
+      for (const record of sourceRecords) {
+          if (record.url) {
+              sourcesData.set(record.url, {
+                  id: record.id,
+                  title: record.title || '',
+                  content: record.content || '',
+                  type: record.type || 'text'
+              });
+          }
+      }
+      console.log(`📚 Loaded ${sourcesData.size} pre-scraped sources from sources.csv.`);
+  } catch (e) {
+      if (e.code === 'ENOENT') {
+          console.log("No sources.csv file found. Will scrape all URLs.");
+      } else {
+          console.warn(`⚠️  Error reading sources.csv: ${e.message}`);
+      }
+  }
+
   // --- Load raw URLs to be processed ---
   const rawUrlsPath = path.join(RAW_DIR, "urls.csv");
   let records = [];
@@ -311,7 +336,24 @@ async function main() {
         let newRow;
         const sourceName = recognizeSource(url);
         
-        if (blocklist.has(sourceName)) {
+        // --- Check if content exists in pre-scraped sources ---
+        if (sourcesData.has(url)) {
+          const sourceData = sourcesData.get(url);
+          console.log(`📖 Using pre-scraped content from sources.csv for: ${url}`);
+          newRow = {
+            processed_id: ++maxProcessedId,
+            raw_id: record.id || '',
+            source_type: 'source',
+            source_name: sourceName,
+            url: url,
+            fetch_date: new Date().toISOString(),
+            content_date: '',
+            scraping_status: 'from_sources',
+            title: sourceData.title,
+            keywords: '',
+            content: sourceData.content,
+          };
+        } else if (blocklist.has(sourceName)) {
           console.log(`🚫 Skipping blocked domain: ${url}`);
           newRow = {
             processed_id: ++maxProcessedId,
