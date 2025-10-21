@@ -34,6 +34,11 @@ if (OPENAI_API_KEY) openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 if (GEMINI_API_KEY) genai = new GoogleGenerativeAI(GEMINI_API_KEY);
 if (DEEPL_API_KEY) translator = new Translator(DEEPL_API_KEY);
 
+if (!OPENAI_API_KEY && !GEMINI_API_KEY) {
+    console.error("❌ Neither OPENAI_API_KEY nor GEMINI_API_KEY is set in .env file. Please provide at least one.");
+    process.exit(1);
+}
+
 async function loadConfig() {
     config = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf-8'));
     defaults = isTestMode ? config.test_defaults : config.defaults;
@@ -45,50 +50,66 @@ async function loadConfig() {
 }
 
 async function synthesizeContent(task, content) {
-  const provider = task.provider || DEFAULT_PROVIDER;
-  let modelKey = task.model || DEFAULT_GENERATOR_MODEL;
+    let provider = task.provider || DEFAULT_PROVIDER;
+    let modelKey = task.model || DEFAULT_GENERATOR_MODEL;
+    
+    const profileKey = task.profile || Object.keys(generators)[0];
+    const profile = generators[profileKey];
+    if (!profile) throw new Error(`Generator profile '${profileKey}' not found in config.`);
   
-  const profileKey = task.profile || Object.keys(generators)[0];
-  const profile = generators[profileKey];
-  if (!profile) throw new Error(`Generator profile '${profileKey}' not found in config.`);
-
-  console.log(`  - Synthesizing with ${provider}/${modelKey} using profile '${profileKey}'`);
-
-  const systemPrompt = profile.system_prompt;
-  let userPrompt = `Synthesize the following articles into a new piece of content with the subject: "${task.subject}".\n\n--- ARTICLES ---\n${content}`;
-  if (isTestMode) {
-    userPrompt += "\n\n**IMPORTANT: For this test run, please keep your response extremely short (under 20 words).**";
-  }
-
-  let synthesizedText = "";
-  let tokensUsed = 0;
-
-  try {
-    if (provider === "openai") {
-      if (!openai) throw new Error("OPENAI_API_KEY is not set in .env");
-      const response = await openai.chat.completions.create({
-        model: modelKey,
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      });
-      synthesizedText = response.choices[0].message.content;
-      tokensUsed = response.usage?.total_tokens || 0;
-    } else if (provider === "gemini") {
-      if (!genai) throw new Error("GEMINI_API_KEY is not set in .env");
-      const model = genai.getGenerativeModel({ model: modelKey });
-      const result = await model.generateContent([systemPrompt, userPrompt]);
-      synthesizedText = result.response.text();
-      tokensUsed = Math.round((systemPrompt.length + userPrompt.length + synthesizedText.length) / 4);
+    console.log(`  - Synthesizing with ${provider}/${modelKey} using profile '${profileKey}'`);
+  
+    const systemPrompt = profile.system_prompt;
+    let userPrompt = `Synthesize the following articles into a new piece of content with the subject: "${task.subject}".\n\n--- ARTICLES ---\n${content}`;
+    if (isTestMode) {
+      userPrompt += "\n\n**IMPORTANT: For this test run, please keep your response extremely short (under 20 words).**";
     }
-  } catch(e) {
-      console.error(`    ❌ AI synthesis failed: ${e.message}`);
-      return `SYNTHESIS_FAILED: ${e.message}`;
-  }
-
-  const cost = (tokensUsed / 1000) * (models[modelKey]?.cost_per_1k_tokens || 0);
-  await logApiUsage({ provider, model: modelKey, tokensUsed, cost, function: `synthesize_${profileKey}` });
   
-  return synthesizedText;
-}
+    let synthesizedText = "";
+    let tokensUsed = 0;
+  
+    const executeApiCall = async (currentProvider, currentModelKey) => {
+      if (currentProvider === "openai") {
+        if (!openai) throw new Error("OPENAI_API_KEY is not set in .env");
+        const response = await openai.chat.completions.create({
+          model: currentModelKey,
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+        });
+        synthesizedText = response.choices[0].message.content;
+        tokensUsed = response.usage?.total_tokens || 0;
+      } else if (currentProvider === "gemini") {
+        if (!genai) throw new Error("GEMINI_API_KEY is not set in .env");
+        const model = genai.getGenerativeModel({ model: currentModelKey });
+        const result = await model.generateContent([systemPrompt, userPrompt]);
+        synthesizedText = result.response.text();
+        tokensUsed = Math.round((systemPrompt.length + userPrompt.length + synthesizedText.length) / 4);
+      }
+    };
+  
+    try {
+      await executeApiCall(provider, modelKey);
+    } catch(e) {
+        console.error(`    ❌ AI synthesis with ${provider} failed: ${e.message}`);
+        if (provider === 'gemini' && openai) {
+            console.log('      -> Falling back to OpenAI...');
+            try {
+                provider = 'openai';
+                modelKey = 'gpt-4o-mini'; // Or some other default OpenAI model
+                await executeApiCall(provider, modelKey);
+            } catch (fallbackError) {
+                console.error(`    ❌ Fallback AI synthesis failed: ${fallbackError.message}`);
+                return `SYNTHESIS_FAILED: ${fallbackError.message}`;
+            }
+        } else {
+            return `SYNTHESIS_FAILED: ${e.message}`;
+        }
+    }
+  
+    const cost = (tokensUsed / 1000) * (models[modelKey]?.cost_per_1k_tokens || 0);
+    await logApiUsage({ provider, model: modelKey, tokensUsed, cost, function: `synthesize_${profileKey}` });
+    
+    return synthesizedText;
+  }
 
 async function translateText(text, platform) {
   if (!text || text.startsWith("SYNTHESIS_FAILED:")) return text;
@@ -131,10 +152,15 @@ async function main() {
     let manualPlan = [];
     try {
         const processedContentCsv = await fs.readFile(PROCESSED_FILE_PATH, "utf-8");
-        processedContent = csvParse(processedContentCsv, { columns: true, bom: true });
+        processedContent = Papa.parse(processedContentCsv, { 
+            header: true, 
+            skipEmptyLines: true,
+            bom: true 
+        }).data;
 
         const manualPlanCsv = await fs.readFile(PLAN_FILE_PATH, "utf-8");
-        manualPlan = csvParse(manualPlanCsv, { columns: true, bom: true });
+        manualPlan = Papa.parse(manualPlanCsv, { header: true, skipEmptyLines: true, bom: true }).data;
+
     } catch (e) {
         if (e.code === 'ENOENT') {
             console.error(`❌ Source file not found: ${e.message}`);

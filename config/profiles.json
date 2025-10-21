@@ -4,14 +4,14 @@
     "generator_model": "gpt-4o-mini",
     "editor_model": "gpt-4o-mini",
     "humanizer_model": "gpt-4o-mini",
-    "translator_model": "models/gemini-1.5-flash-latest"
+    "translator_model": "gemini-1.5-flash-latest"
   },
   "test_defaults": {
     "provider": "openai",
     "generator_model": "gpt-4o-mini",
     "editor_model": "gpt-4o-mini",
     "humanizer_model": "gpt-4o-mini",
-    "translator_model": "models/gemini-1.5-flash-latest"
+    "translator_model": "gemini-1.5-flash-latest"
   },
   "generators": {
     "sns_draft_v1": {
@@ -209,16 +209,16 @@
       "max_tokens": 4096,
       "recommended_for": ["investor", "student"]
     },
-    "gemini-2.5-flash": {
-      "name": "Gemini 2.5 Flash",
-      "description": "Google Gemini 2.5 Flash (fast/efficient)",
+    "gemini-1.5-flash-latest": {
+      "name": "Gemini 1.5 Flash",
+      "description": "Google Gemini 1.5 Flash (fast/efficient)",
       "cost_per_1k_tokens": 0.0,
       "max_tokens": 1048576,
       "recommended_for": ["investor", "student", "executive"]
     },
-    "gemini-2.5-pro": {
-      "name": "Gemini 2.5 Pro",
-      "description": "Google Gemini 2.5 Pro (reasoning, long context)",
+    "gemini-1.5-pro-latest": {
+      "name": "Gemini 1.5 Pro",
+      "description": "Google Gemini 1.5 Pro (reasoning, long context)",
       "cost_per_1k_tokens": 0.0,
       "max_tokens": 1048576,
       "recommended_for": ["researcher", "executive"]

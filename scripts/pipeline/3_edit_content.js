@@ -4,6 +4,7 @@ import path from 'path';
 import { parse as csvParse } from 'csv-parse/sync';
 import { stringify as csvStringify } from 'csv-stringify/sync';
 import Papa from 'papaparse';
+import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logApiUsage } from '../logger.js';
 
@@ -36,15 +37,20 @@ try {
 }
 
 const defaults = isTestMode ? config.test_defaults : config.defaults;
-const EDITOR_MODEL_KEY = defaults.editor_model;
+let EDITOR_MODEL_KEY = defaults.editor_model;
+let EDITOR_PROVIDER = defaults.provider;
 
 // --- AI Client Initialization ---
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-let genai;
-if (GEMINI_API_KEY) {
-  genai = new GoogleGenerativeAI(GEMINI_API_KEY);
-} else {
-  console.warn("GEMINI_API_KEY not found in .env. The script will run without AI editing capabilities.");
+
+let openai, genai;
+if (OPENAI_API_KEY) openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+if (GEMINI_API_KEY) genai = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+if (!OPENAI_API_KEY && !GEMINI_API_KEY) {
+    console.error("❌ Neither OPENAI_API_KEY nor GEMINI_API_KEY is set in .env file. Please provide at least one.");
+    process.exit(1);
 }
 
 /**
@@ -55,13 +61,12 @@ if (GEMINI_API_KEY) {
  * @returns {Promise<string>} - The edited text.
  */
 async function editContent(textToEdit, profile, modelsConfig, platform, lang) {
-  if (!genai || !textToEdit) {
+  if ((!genai && EDITOR_PROVIDER === 'gemini') || (!openai && EDITOR_PROVIDER === 'openai') || !textToEdit) {
     return textToEdit; // Return original if AI is not configured or text is empty
   }
 
-  console.log(`  - Editing for ${platform} (${lang}) with ${EDITOR_MODEL_KEY} using profile '${editorProfileKey}'`);
+  console.log(`  - Editing for ${platform} (${lang}) with ${EDITOR_PROVIDER}/${EDITOR_MODEL_KEY} using profile '${editorProfileKey}'`);
   
-  const model = genai.getGenerativeModel({ model: EDITOR_MODEL_KEY });
   const systemPrompt = profile.system_prompt;
   let userPrompt = `Please enhance the following text according to your instructions. **Crucially, you must respond in the same language as the input text.**\n\n--- TEXT ---\n${textToEdit}`;
 
@@ -69,20 +74,49 @@ async function editContent(textToEdit, profile, modelsConfig, platform, lang) {
     userPrompt += "\n\n**IMPORTANT: For this test run, please keep your response extremely short (under 20 words).**";
   }
 
-  try {
-    const result = await model.generateContent([systemPrompt, userPrompt]);
-    const editedText = result.response.text();
-    
-    // Log API usage
-    const tokensUsed = Math.round((systemPrompt.length + userPrompt.length + editedText.length) / 4); // Estimate
-    const cost = (tokensUsed / 1000) * (modelsConfig[EDITOR_MODEL_KEY]?.cost_per_1k_tokens || 0);
-    await logApiUsage({ provider: "gemini", model: EDITOR_MODEL_KEY, tokensUsed, cost, function: `edit_${editorProfileKey}` });
+  let editedText = '';
+  let tokensUsed = 0;
 
-    return editedText;
-  } catch (e) {
-    console.error(`    ❌ AI editing failed: ${e.message}`);
-    return `EDITING_FAILED: ${e.message}`;
+  const executeEdit = async (provider, modelKey) => {
+    if (provider === 'gemini') {
+        const model = genai.getGenerativeModel({ model: modelKey });
+        const result = await model.generateContent([systemPrompt, userPrompt]);
+        editedText = result.response.text();
+        tokensUsed = Math.round((systemPrompt.length + userPrompt.length + editedText.length) / 4);
+    } else if (provider === 'openai') {
+        const response = await openai.chat.completions.create({
+            model: modelKey,
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          });
+        editedText = response.choices[0].message.content;
+        tokensUsed = response.usage?.total_tokens || 0;
+    }
   }
+
+  try {
+    await executeEdit(EDITOR_PROVIDER, EDITOR_MODEL_KEY);
+  } catch (e) {
+    console.error(`    ❌ AI editing with ${EDITOR_PROVIDER} failed: ${e.message}`);
+    if (EDITOR_PROVIDER === 'gemini' && openai) {
+        console.log('      -> Falling back to OpenAI...');
+        try {
+            EDITOR_PROVIDER = 'openai';
+            EDITOR_MODEL_KEY = 'gpt-4o-mini'; 
+            await executeEdit(EDITOR_PROVIDER, EDITOR_MODEL_KEY);
+        } catch (fallbackError) {
+            console.error(`    ❌ Fallback AI editing failed: ${fallbackError.message}`);
+            return `EDITING_FAILED: ${fallbackError.message}`;
+        }
+    } else {
+        return `EDITING_FAILED: ${e.message}`;
+    }
+  }
+
+  // Log API usage
+  const cost = (tokensUsed / 1000) * (modelsConfig[EDITOR_MODEL_KEY]?.cost_per_1k_tokens || 0);
+  await logApiUsage({ provider: EDITOR_PROVIDER, model: EDITOR_MODEL_KEY, tokensUsed, cost, function: `edit_${editorProfileKey}` });
+
+  return editedText;
 }
 
 /**
@@ -95,8 +129,8 @@ async function main() {
 
   console.log(`🚀 Starting content editing process with profile: '${editorProfileKey}'...`);
 
-  if (!genai) {
-    console.log("🚫 AI client not initialized. Exiting.");
+  if (!genai && !openai) {
+    console.log("🚫 No AI client initialized. Exiting.");
     return;
   }
 

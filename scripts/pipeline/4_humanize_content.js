@@ -3,6 +3,7 @@ import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import { parse as csvParse } from 'csv-parse/sync';
 import { stringify as csvStringify } from 'csv-stringify/sync';
+import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logApiUsage } from '../logger.js';
 
@@ -35,38 +36,68 @@ try {
 }
 
 const defaults = isTestMode ? config.test_defaults : config.defaults;
-const HUMANIZER_MODEL_KEY = defaults.humanizer_model;
+let HUMANIZER_MODEL_KEY = defaults.humanizer_model;
+let HUMANIZER_PROVIDER = defaults.provider;
 
 // --- AI Client Initialization ---
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-let genai;
-if (GEMINI_API_KEY) {
-  genai = new GoogleGenerativeAI(GEMINI_API_KEY);
-} else {
-  console.warn("GEMINI_API_KEY not found in .env. The script will run without AI capabilities.");
+let openai, genai;
+if(OPENAI_API_KEY) openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+if (GEMINI_API_KEY) genai = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+if (!OPENAI_API_KEY && !GEMINI_API_KEY) {
+    console.error("❌ Neither OPENAI_API_KEY nor GEMINI_API_KEY is set in .env file. Please provide at least one.");
+    process.exit(1);
 }
 
 async function humanizeContent(textToHumanize, profile, platform, lang) {
     if (isTestMode) {
         return `[TEST] Humanized content for ${platform} (${lang}).`;
     }
-    if (!genai || !textToHumanize) {
+    if ((!genai && HUMANIZER_PROVIDER === 'gemini') || (!openai && HUMANIZER_PROVIDER === 'openai') || !textToHumanize) {
         return textToHumanize;
     }
 
-    console.log(`  - Humanizing for ${platform} (${lang}) with ${HUMANIZER_MODEL_KEY} using profile '${humanizerProfileKey}'`);
+    console.log(`  - Humanizing for ${platform} (${lang}) with ${HUMANIZER_PROVIDER}/${HUMANIZER_MODEL_KEY} using profile '${humanizerProfileKey}'`);
     
-    const model = genai.getGenerativeModel({ model: HUMANIZER_MODEL_KEY });
     const systemPrompt = profile.system_prompt;
     let userPrompt = `Please rewrite the following text:\n\n--- TEXT ---\n${textToHumanize}`;
+    let humanizedText = '';
+
+    const executeHumanize = async (provider, modelKey) => {
+        if (provider === 'gemini') {
+            const model = genai.getGenerativeModel({ model: modelKey });
+            const result = await model.generateContent([systemPrompt, userPrompt]);
+            humanizedText = result.response.text();
+        } else if (provider === 'openai') {
+            const response = await openai.chat.completions.create({
+                model: modelKey,
+                messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+            });
+            humanizedText = response.choices[0].message.content;
+        }
+    }
 
     try {
-        const result = await model.generateContent([systemPrompt, userPrompt]);
-        const humanizedText = result.response.text();
-        await logApiUsage({ provider: "gemini", model: HUMANIZER_MODEL_KEY, function: `humanize_${humanizerProfileKey}` });
+        await executeHumanize(HUMANIZER_PROVIDER, HUMANIZER_MODEL_KEY);
+        await logApiUsage({ provider: HUMANIZER_PROVIDER, model: HUMANIZER_MODEL_KEY, function: `humanize_${humanizerProfileKey}` });
         return humanizedText;
     } catch (e) {
-        console.error(`    ❌ AI humanization failed: ${e.message}`);
+        console.error(`    ❌ AI humanization with ${HUMANIZER_PROVIDER} failed: ${e.message}`);
+        if(HUMANIZER_PROVIDER === 'gemini' && openai) {
+            console.log('      -> Falling back to OpenAI...');
+            try {
+                HUMANIZER_PROVIDER = 'openai';
+                HUMANIZER_MODEL_KEY = 'gpt-4o-mini';
+                await executeHumanize(HUMANIZER_PROVIDER, HUMANIZER_MODEL_KEY);
+                await logApiUsage({ provider: HUMANIZER_PROVIDER, model: HUMANIZER_MODEL_KEY, function: `humanize_${humanizerProfileKey}` });
+                return humanizedText;
+            } catch (fallbackError) {
+                console.error(`    ❌ Fallback AI humanization failed: ${fallbackError.message}`);
+                return `HUMANIZATION_FAILED: ${fallbackError.message}`;
+            }
+        }
         return `HUMANIZATION_FAILED: ${e.message}`;
     }
 }
