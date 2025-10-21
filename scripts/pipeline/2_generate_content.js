@@ -131,10 +131,10 @@ async function main() {
     let manualPlan = [];
     try {
         const processedContentCsv = await fs.readFile(PROCESSED_FILE_PATH, "utf-8");
-        processedContent = csvParse(processedContentCsv, { columns: true, bom: true });
+        processedContent = csvParse(processedContentCsv, { columns: true, bom: true, skip_empty_lines: true });
 
         const manualPlanCsv = await fs.readFile(PLAN_FILE_PATH, "utf-8");
-        manualPlan = csvParse(manualPlanCsv, { columns: true, bom: true });
+        manualPlan = csvParse(manualPlanCsv, { columns: true, bom: true, skip_empty_lines: true });
     } catch (e) {
         if (e.code === 'ENOENT') {
             console.error(`❌ Source file not found: ${e.message}`);
@@ -150,7 +150,7 @@ async function main() {
     try {
         await fs.access(RUNS_FILE_PATH);
         const runsCsv = await fs.readFile(RUNS_FILE_PATH, 'utf-8');
-        const runs = csvParse(runsCsv, { columns: true, bom: true });
+        const runs = csvParse(runsCsv, { columns: true, bom: true, skip_empty_lines: true });
         if (runs.length > 0) {
             runs.forEach(run => runsMap.set(run.plan_hash, run));
             nextRunId = Math.max(...runs.map(r => parseInt(r.run_id, 10))) + 1;

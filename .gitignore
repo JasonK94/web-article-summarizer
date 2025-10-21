@@ -41,3 +41,6 @@ jspm_packages/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local Chrome temp profile (should never be tracked)
+temp_chrome_profile_main/
