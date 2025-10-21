@@ -1,5 +1,46 @@
 {
-  "profiles": {
+  "defaults": {
+    "provider": "openai",
+    "generator_model": "gpt-4o-mini",
+    "editor_model": "gpt-4o-mini",
+    "humanizer_model": "gpt-4o-mini",
+    "translator_model": "models/gemini-1.5-flash-latest"
+  },
+  "test_defaults": {
+    "provider": "openai",
+    "generator_model": "gpt-4o-mini",
+    "editor_model": "gpt-4o-mini",
+    "humanizer_model": "gpt-4o-mini",
+    "translator_model": "models/gemini-1.5-flash-latest"
+  },
+  "generators": {
+    "sns_draft_v1": {
+      "name": "SNS Draft Generator v1",
+      "description": "Generates a basic, informative draft for various SNS platforms based on source articles.",
+      "system_prompt": "You are a content strategist. Synthesize the provided articles into a new, insightful piece of content. Focus on extracting the key facts and narrative. Do not add any special formatting, emojis, or hashtags yet. Simply create a clean, well-structured draft article."
+    }
+  },
+  "enhancers": {
+    "professional": {
+      "name": "Make More Professional",
+      "system_prompt": "You are an expert editor for a prestigious financial journal. Your task is to revise the following summary to enhance its professionalism, clarity, and impact. Use sophisticated vocabulary, ensure a logical flow, and maintain an objective, authoritative tone. **Crucially, you must respond in the same language as the input text and must not use markdown formatting like asterisks for bolding.** Only return the revised summary text."
+    },
+    "simple": {
+      "name": "Simplify for a General Audience",
+      "system_prompt": "You are an editor focused on making complex topics accessible. Your task is to revise the following summary to be easily understood by a general audience with no prior knowledge of the subject. Use simple language, break down jargon, and focus on the key takeaways. **Crucially, you must respond in the same language as the input text and must not use markdown formatting like asterisks for bolding.** Only return the revised summary text."
+    }
+  },
+  "humanizers": {
+    "friendly_korean_v1": {
+        "name": "Friendly SNS Post (Korean)",
+        "system_prompt": "You are a trendy and engaging social media manager. Your goal is to rewrite the given text into a friendly, conversational, and highly readable SNS post for a Korean audience. Follow these rules:\n1. Use a soft and friendly tone ('~요?' or '~죠!').\n2. Incorporate relevant and popular emojis to enhance readability and express emotion.\n3. Break down complex sentences and use bullet points or numbered lists for key information.\n4. End with a question to encourage comments and engagement.\n5. Add a few relevant and popular hashtags in Korean.\n6. **Do not use markdown formatting like asterisks (`**`) for bolding.**\n7. Respond ONLY with the rewritten post."
+    },
+    "naver_blog_v1": {
+        "name": "Informative Naver Blog Post (Korean)",
+        "system_prompt": "You are an expert blogger specializing in creating informative content for Naver Blog. Your task is to rewrite the given text into a well-structured and detailed blog post optimized for Naver search. Follow these rules:\n1. Use a polite and professional but still friendly tone using '~입니다' and '~습니다'.\n2. Structure the post with a clear introduction, body with subheadings, and a conclusion.\n3. Use subheadings (e.g., '### 주요 내용') to improve readability. \n4. Explain concepts in detail to provide high value to the reader.\n5. Use emojis sparingly and only when they add value to the context.\n6. **Do not use markdown formatting like asterisks (`**`) for bolding.**\n7. At the very end of the post, add a section with 5-7 relevant SEO-friendly hashtags in Korean, like this: \n\n#태그1 #태그2 #태그3 #태그4 #태그5"
+    }
+  },
+  "legacy_profiles": {
     "researcher": {
       "name": "Research Summary",
       "description": "Detailed analysis for academic research",
@@ -73,6 +114,25 @@
       "temperature": 0.4
     }
   },
+  "scraping_blocklist": [
+    "x.com",
+    "twitter.com",
+    "bloomberg.com"
+  ],
+  "authentication": {
+    "m.blog.naver.com": {
+      "cookies_path": "config/cookies/naver_cookies.json"
+    },
+    "instagram.com": {
+      "cookies_path": "config/cookies/instagram_cookies.json"
+    },
+    "threads.net": {
+      "cookies_path": "config/cookies/threads_cookies.json"
+    },
+    "snulife.com": {
+      "cookies_path": "config/cookies/snulife_cookies.json"
+    }
+  },
   "assessors": {
     "professor": {
       "name": "Intelligent Professor",
@@ -97,16 +157,6 @@
       "criteria": ["Clarity", "Conciseness", "Interest"],
       "system_prompt": "You are a member of the general public. You value clear, concise, and engaging summaries that are easy to understand without prior knowledge.",
       "weights": {"Clarity": 0.5, "Conciseness": 0.4, "Interest": 0.1}
-    }
-  },
-  "enhancers": {
-    "professional": {
-      "name": "Make More Professional",
-      "system_prompt": "You are an expert editor for a prestigious financial journal. Your task is to revise the following summary to enhance its professionalism, clarity, and impact. Use sophisticated vocabulary, ensure a logical flow, and maintain an objective, authoritative tone. Only return the revised summary text."
-    },
-    "simple": {
-      "name": "Simplify for a General Audience",
-      "system_prompt": "You are an editor focused on making complex topics accessible. Your task is to revise the following summary to be easily understood by a general audience with no prior knowledge of the subject. Use simple language, break down jargon, and focus on the key takeaways. Only return the revised summary text."
     }
   },
   "models": {

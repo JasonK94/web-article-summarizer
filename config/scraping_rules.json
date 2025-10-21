@@ -1,0 +1,25 @@
+{
+    "default": {
+        "content_selector": "article, [role='main'], main, .post-content, .entry-content, .article_body",
+        "remove_selectors": ["script", "style", "nav", "header", "footer", ".aside", ".footer", "iframe", "form"],
+        "fallback_selector": "body"
+    },
+    "specific_rules": {
+        "snulife.com": {
+            "content_selector": ".view_content"
+        },
+        "blog.naver.com": {
+            "content_selector": ".se-main-container"
+        },
+        "wsj.com": {
+            "content_selector": ".wsj-snippet-body"
+        },
+        "nature.com": {
+            "content_selector": "#content"
+        },
+        "dongascience.com": {
+            "content_selector": ".article_body"
+        }
+    }
+}
+

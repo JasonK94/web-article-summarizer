@@ -1,0 +1,1 @@
+[{"action":{"requestHeaders":[{"header":"X-Kopernio-Plugin-Version","operation":"set","value":"3.5.0"}],"type":"modifyHeaders"},"condition":{"requestDomains":["click.endnote.com"],"resourceTypes":["main_frame","sub_frame","stylesheet","script","image","font","object","xmlhttprequest","ping","csp_report","media","websocket","other"],"urlFilter":"*"},"id":1,"priority":1}]

@@ -3,61 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Article Summarizer Control Panel</title>
+    <title>Content Pipeline Dashboard</title>
     <style>
-        body { font-family: sans-serif; margin: 2em; }
-        .controls, .output { margin-bottom: 2em; }
-        button { margin-right: 1em; padding: 0.5em 1em; }
-        #log-container {
-            background-color: #f4f4f4;
-            border: 1px solid #ddd;
-            height: 400px;
-            overflow-y: scroll;
-            padding: 1em;
-            white-space: pre-wrap;
+        :root {
+            --primary-color: #007bff; --secondary-color: #6c757d; --bg-color: #f8f9fa;
+            --text-color: #333; --card-bg: #fff; --border-color: #dee2e6; --header-bg: #e9ecef;
         }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: var(--text-color); background-color: var(--bg-color); margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1, h2 { text-align: center; color: #212529; }
+        
+        /* Controls & Logs */
+        .controls { background-color: var(--card-bg); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .controls h2 { margin: 0; font-size: 1.2em; }
+        .controls .buttons button { background-color: var(--primary-color); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-left: 10px; }
+        .controls .buttons button:hover { background-color: #0056b3; }
+        .profile-control { display: inline-flex; align-items: center; margin-left: 10px; }
+        .profile-control select { padding: 8px; border-radius: 5px; border: 1px solid var(--border-color); margin-right: 5px; font-size: 0.9em; }
+        #log-container { background-color: #212529; color: #f8f9fa; border: 1px solid #495057; height: 300px; overflow-y: scroll; padding: 1em; white-space: pre-wrap; font-family: "SF Mono", monospace; font-size: 0.85em; border-radius: 5px; margin-bottom: 20px; display: none; }
+        
+        /* List View */
+        #list-view .run-item { background-color: var(--card-bg); margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        #list-view .run-item:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        #list-view .item-header { display: grid; grid-template-columns: 50px 3fr 1fr 1fr; align-items: center; padding: 15px 20px; }
+        #list-view .item-header div { font-size: 0.9em; }
+        #list-view .item-header .id { font-weight: bold; color: var(--primary-color); }
+        #list-view .item-header .profile { color: var(--secondary-color); }
+        #list-view .list-header { font-weight: bold; background-color: var(--header-bg); padding: 10px 20px; margin-bottom: 10px; border-radius: 5px; display: grid; grid-template-columns: 50px 3fr 1fr 1fr;}
+        
+        /* Detail View */
+        #detail-view { background-color: var(--card-bg); padding: 20px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #detail-view .detail-header { border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
+        #detail-view .back-button { margin-bottom: 20px; cursor: pointer; color: var(--primary-color); font-weight: bold; }
+        .source-ids { cursor: pointer; color: #17a2b8; text-decoration: underline; }
+        .platform-accordion details { margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 5px; }
+        .platform-accordion summary { padding: 15px; font-weight: bold; cursor: pointer; background-color: #f8f9fa; }
+        .platform-accordion .content-wrapper { padding: 15px; border-top: 1px solid var(--border-color); }
+        .content-box { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; font-size: 0.9em; white-space: pre-wrap; word-wrap: break-word; margin-bottom: 10px; }
+        .content-box.edited { border-left: 3px solid #28a745; background-color: #e9f5ec; }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 900px; border-radius: 8px; }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        
+        .error { color: #dc3545; font-weight: bold; }
+        .loading { text-align: center; font-size: 1.5em; color: var(--secondary-color); }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <h1>Web Article Summarizer Control Panel</h1>
+    <div class="container">
+        <h1>Content Pipeline Dashboard</h1>
 
-    <div class="controls">
-        <h2>Actions</h2>
-        <button id="run-harvest">Harvest Articles</button>
-        <button id="run-summarize">Summarize Articles</button>
-        <button id="run-sources">Summarize from Sources</button>
+        <div class="controls">
+            <h2>Pipeline Controls</h2>
+            <div class="buttons">
+                <button id="run-all">Run Full Pipeline</button>
+                <button id="run-step1">Step 1: Process Raw</button>
+                <button id="run-step2">Step 2: Generate Content</button>
+                <div class="profile-control">
+                    <select id="profile-selector"></select>
+                    <button id="run-step3">Step 3: Edit Content</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="log-container"></div>
+        
+        <div id="list-view" class="loading">Loading content...</div>
+
+        <div id="detail-view" class="hidden"></div>
     </div>
 
-    <div class="output">
-        <h2>Live Log</h2>
-        <div id="log-container"></div>
+    <!-- Modal for Source Content -->
+    <div id="source-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Source Content</h2>
+            <div id="modal-body"></div>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        const logContainer = document.getElementById('log-container');
+        // --- State Management ---
+        let allRunsData = [];
 
+        // --- DOM Elements ---
+        const logContainer = document.getElementById('log-container');
+        const listView = document.getElementById('list-view');
+        const detailView = document.getElementById('detail-view');
+        const modal = document.getElementById('source-modal');
+
+        // --- WebSocket Logic ---
+        const socket = io();
         socket.on('log', (message) => {
+            logContainer.style.display = 'block';
             logContainer.textContent += message;
             logContainer.scrollTop = logContainer.scrollHeight;
         });
 
-        function startScript(scriptName) {
-            logContainer.textContent = `--- Starting ${scriptName}.js ---\n`;
-            socket.emit('run-script', scriptName);
+        // --- Control Logic ---
+        function setupControls() {
+            document.getElementById('run-all').addEventListener('click', () => runStep('all'));
+            document.getElementById('run-step1').addEventListener('click', () => runStep('1'));
+            document.getElementById('run-step2').addEventListener('click', () => runStep('2'));
+            document.getElementById('run-step3').addEventListener('click', () => {
+                const selector = document.getElementById('profile-selector');
+                const profile = selector.value;
+                if (profile) {
+                    runStep('3', profile);
+                } else {
+                    alert('Please select an editor profile.');
+                }
+            });
         }
 
-        document.getElementById('run-harvest').addEventListener('click', () => {
-            startScript('harvest');
-        });
+        function runStep(step, profile = null) {
+            logContainer.textContent = '';
+            socket.emit('run-step', { step, profile });
+        }
 
-        document.getElementById('run-summarize').addEventListener('click', () => {
-            startScript('app'); // Corresponds to app.js
-        });
+        // --- Data Fetching & Rendering ---
+        async function initialize() {
+            try {
+                const response = await fetch('/api/runs');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                allRunsData = (await response.json()).reverse();
+                renderListView();
+            } catch (error) {
+                listView.classList.remove('loading');
+                listView.innerHTML = `<p class="error">Failed to load content: ${error.message}</p>`;
+            }
+            
+            // Fetch and populate profiles for the dropdown
+            try {
+                const profileResponse = await fetch('/api/profiles');
+                const profiles = await profileResponse.json();
+                const selector = document.getElementById('profile-selector');
+                if (profiles.length > 0) {
+                    selector.innerHTML = profiles.map(p => `<option value="${p}">${p}</option>`).join('');
+                } else {
+                    selector.innerHTML = '<option value="">No profiles found</option>';
+                    document.getElementById('run-step3').disabled = true;
+                }
+            } catch (error) {
+                console.error('Failed to load profiles:', error);
+            }
+        }
 
-        document.getElementById('run-sources').addEventListener('click', () => {
-            startScript('sources-run');
+        function renderListView() {
+            listView.classList.remove('loading');
+            listView.innerHTML = '';
+            
+            if (allRunsData.length === 0) {
+                listView.innerHTML = '<p>No content runs found.</p>';
+                return;
+            }
+
+            const header = `<div class="list-header">
+                <div class="id">ID</div>
+                <div class="name">Subject</div>
+                <div class="profile">Profile</div>
+                <div class="model">Model</div>
+            </div>`;
+            listView.innerHTML = header;
+
+            allRunsData.forEach(run => {
+                const item = document.createElement('div');
+                item.className = 'run-item';
+                item.dataset.runId = run.run_id;
+                item.innerHTML = `
+                    <div class="item-header">
+                        <div class="id">${run.run_id}</div>
+                        <div class="name">${run.name}</div>
+                        <div class="profile">${run.profile}</div>
+                        <div class="model">${run.model}</div>
+                    </div>
+                `;
+                item.addEventListener('click', () => renderDetailView(run.run_id));
+                listView.appendChild(item);
+            });
+        }
+
+        function renderDetailView(runId) {
+            const run = allRunsData.find(r => r.run_id === runId);
+            if (!run) return;
+
+            listView.classList.add('hidden');
+            detailView.classList.remove('hidden');
+
+            const platforms = ['linkedin', 'x', 'facebook', 'threads'];
+            let accordionsHTML = '';
+            
+            ['en', 'kor'].forEach(lang => {
+                platforms.forEach(p => {
+                    const draft = run[`${p}_${lang}`];
+                    const edited = run[`${p}_edited_${lang}`];
+                    if (draft) {
+                        accordionsHTML += `
+                        <details>
+                            <summary>${p.charAt(0).toUpperCase() + p.slice(1)} (${lang === 'en' ? 'English' : 'Korean'})</summary>
+                            <div class="content-wrapper">
+                                <h4>Draft</h4>
+                                <div class="content-box">${draft}</div>
+                                ${edited ? `<h4>Edited</h4><div class="content-box edited">${edited}</div>` : ''}
+                            </div>
+                        </details>
+                        `;
+                    }
+                });
+            });
+
+            detailView.innerHTML = `
+                <div class="back-button" onclick="showListView()">&larr; Back to List</div>
+                <div class="detail-header">
+                    <h2>${run.name}</h2>
+                    <p><strong>Run ID:</strong> ${run.run_id} | <strong>Profile:</strong> ${run.profile} | <strong>Model:</strong> ${run.model}</p>
+                    <p><strong>Source IDs:</strong> <span class="source-ids" data-ids="${run.processed_ids}">${run.processed_ids}</span></p>
+                </div>
+                <div class="platform-accordion">${accordionsHTML}</div>
+            `;
+
+            detailView.querySelector('.source-ids').addEventListener('click', (e) => showSourceModal(e.target.dataset.ids));
+        }
+
+        function showListView() {
+            detailView.classList.add('hidden');
+            detailView.innerHTML = '';
+            listView.classList.remove('hidden');
+        }
+
+        // --- Modal Logic ---
+        async function showSourceModal(ids) {
+            const body = document.getElementById('modal-body');
+            body.innerHTML = 'Loading sources...';
+            modal.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/sources?ids=${ids}`);
+                const sources = await response.json();
+                let html = '';
+                sources.forEach(source => {
+                    html += `<details><summary>${source.title || 'N/A'} (ID: ${source.processed_id})</summary><div class="content-box">${source.content || 'No content found.'}</div></details>`;
+                });
+                body.innerHTML = html;
+            } catch (error) {
+                body.innerHTML = `<p class="error">Failed to load sources: ${error.message}</p>`;
+            }
+        }
+
+        function setupModal() {
+            const closeBtn = document.querySelector('.close-button');
+            closeBtn.onclick = () => modal.style.display = "none";
+            window.onclick = (event) => {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            };
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initialize();
+            setupControls();
+            setupModal();
         });
     </script>
 </body>

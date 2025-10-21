@@ -166,8 +166,14 @@ function composeForSns(content, platform) {
     case 'short_form_video':
       // return composeForShortFormVideo(content);
       throw new Error('Not implemented yet');
+    case 'naver-blog':
+        return {
+            text: [content] // No splitting needed
+        };
     default:
-      throw new Error(`Unsupported platform: ${platform}`);
+        return {
+            error: `Unsupported platform: ${platform}`
+        };
   }
 }
 

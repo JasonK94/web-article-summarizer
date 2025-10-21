@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import { promises as fs } from 'fs';
+import path from 'path';
 
 const profiles = await loadProfiles();
 
@@ -26,33 +26,29 @@ async function writeLine(file, obj) {
 }
 
 export async function logApiUsage(data) {
-  const logFile = "api_usage.csv";
-  const logPath = path.join(logsDir, logFile);
-  const headers = "Timestamp,Provider,Model,TokensUsed,Cost,Function\n";
-  const row = [
-    new Date().toISOString(),
-    data.provider,
-    data.model,
-    data.tokensUsed,
-    data.cost.toFixed(6),
-    data.function
-  ].join(",");
+    const logPath = path.join(logsDir, 'api_usage.csv');
+    const timestamp = new Date().toISOString();
 
-  try {
-    await fs.mkdir(logsDir, { recursive: true });
-    let fileExists = false;
+    const logEntry = {
+        timestamp,
+        provider: data.provider || 'N/A',
+        model: data.model || 'N/A',
+        function: data.function || 'N/A',
+        tokens_used: data.tokensUsed !== undefined ? data.tokensUsed : 'N/A',
+        characters: data.characters !== undefined ? data.characters : 'N/A',
+        cost_usd: data.cost !== undefined ? data.cost.toFixed(6) : 'N/A'
+    };
+
+    const headers = Object.keys(logEntry).join(',');
+    const row = Object.values(logEntry).join(',');
+
     try {
-      await fs.access(logPath);
-      fileExists = true;
-    } catch {}
-    
-    if (!fileExists) {
-      await fs.writeFile(logPath, headers, "utf-8");
+        await fs.access(logPath);
+        await fs.appendFile(logPath, row + '\n', 'utf-8');
+    } catch (e) {
+        // File doesn't exist, create it with headers and BOM
+        await fs.writeFile(logPath, '\ufeff' + headers + '\n' + row + '\n', 'utf-8');
     }
-    await fs.appendFile(logPath, row + "\n", "utf-8");
-  } catch (e) {
-    console.error(`Failed to write to API usage log: ${e.message}`);
-  }
 }
 
 export async function logEvent(event) {
