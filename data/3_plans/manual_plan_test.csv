@@ -1,3 +1,4 @@
 processed_ids,subject,provider,model,profile
-1,A look at the new blood tests approved for Alzheimer's disease,,,
-
+1,"Blood tests for Alzheimer's disease: accuracy and approval status",openai,gpt-4o-mini,sns_draft_v1
+2,"Self-assembly automation in Game of Life reversal",openai,gpt-4o-mini,sns_draft_v1
+15,"Anti-aging breakthrough with stem cells in monkey studies",openai,gpt-4o-mini,sns_draft_v1

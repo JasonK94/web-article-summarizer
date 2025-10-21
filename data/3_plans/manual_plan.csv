@@ -1,2 +1,27 @@
-﻿processed_ids,subject,provider,model,profile
-1,"A deep dive into the article: Blood tests are now approved for Alzheimers: how accurate are they?",,,
+processed_ids,subject,provider,model,profile
+1,"Blood tests for Alzheimer's disease: accuracy and approval status",openai,gpt-4o-mini,sns_draft_v1
+2,"Self-assembly automation in Game of Life reversal",openai,gpt-4o-mini,sns_draft_v1
+3,"AI blog SaaS startup success story in Japan",openai,gpt-4o-mini,sns_draft_v1
+4,"Real estate platform analysis",openai,gpt-4o-mini,sns_draft_v1
+5,"Korean news analysis from Hankyoreh",openai,gpt-4o-mini,sns_draft_v1
+6,"Blog content analysis",openai,gpt-4o-mini,sns_draft_v1
+7,"Malpractice case: Traditional Korean medicine practitioner treating breast cancer patients",openai,gpt-4o-mini,sns_draft_v1
+8,"The end of digital analytics",openai,gpt-4o-mini,sns_draft_v1
+9,"Brain regions that die when overworking without rest",openai,gpt-4o-mini,sns_draft_v1
+10,"Instagram content analysis",openai,gpt-4o-mini,sns_draft_v1
+11,"YouTube video content",openai,gpt-4o-mini,sns_draft_v1
+12,"Alpha Marketing insights",openai,gpt-4o-mini,sns_draft_v1
+13,"Business cafe insights from BZCF",openai,gpt-4o-mini,sns_draft_v1
+14,"YouTube content analysis",openai,gpt-4o-mini,sns_draft_v1
+15,"Anti-aging breakthrough with stem cells in monkey studies",openai,gpt-4o-mini,sns_draft_v1
+16,"SNULife community best posts",openai,gpt-4o-mini,sns_draft_v1
+17,"Google TPU's impact on AI infrastructure future",openai,gpt-4o-mini,sns_draft_v1
+18,"Blocked content analysis",openai,gpt-4o-mini,sns_draft_v1
+19,"Quantum computing developments",openai,gpt-4o-mini,sns_draft_v1
+20,"Bloomberg financial news",openai,gpt-4o-mini,sns_draft_v1
+21,"Threads social media content",openai,gpt-4o-mini,sns_draft_v1
+22,"Gangwon Domin Ilbo news coverage",openai,gpt-4o-mini,sns_draft_v1
+23,"Dong-A Science news coverage",openai,gpt-4o-mini,sns_draft_v1
+24,"Dong-A Science article on olfactory research",openai,gpt-4o-mini,sns_draft_v1
+25,"Parkinson's disease stem cell transplant success story",openai,gpt-4o-mini,sns_draft_v1
+26,"25-year-old quant investor achieving global success",openai,gpt-4o-mini,sns_draft_v1
