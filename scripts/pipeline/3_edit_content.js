@@ -55,10 +55,6 @@ if (GEMINI_API_KEY) {
  * @returns {Promise<string>} - The edited text.
  */
 async function editContent(textToEdit, profile, modelsConfig, platform, lang) {
-  if (isTestMode) {
-    return `[TEST] Edited for ${platform} (${lang}).`;
-  }
-
   if (!genai || !textToEdit) {
     return textToEdit; // Return original if AI is not configured or text is empty
   }
@@ -99,12 +95,9 @@ async function main() {
 
   console.log(`🚀 Starting content editing process with profile: '${editorProfileKey}'...`);
 
-  if (!genai && !isTestMode) {
+  if (!genai) {
     console.log("🚫 AI client not initialized. Exiting.");
     return;
-  }
-  if (!genai && isTestMode) {
-    console.log("🧪 Test mode without GEMINI_API_KEY: proceeding with mocked edits.");
   }
 
   // --- Load Data ---
@@ -199,20 +192,7 @@ async function main() {
     }
     
     if (hasContentToEdit) {
-        // Write in a fixed column order matching the header to avoid inconsistent columns
-        const row = [
-          newEditedRun.run_id || '',
-          newEditedRun.editor_profile || editorProfileKey,
-          newEditedRun['linkedin_edited_en'] || '',
-          newEditedRun['linkedin_edited_kor'] || '',
-          newEditedRun['x_edited_en'] || '',
-          newEditedRun['x_edited_kor'] || '',
-          newEditedRun['facebook_edited_en'] || '',
-          newEditedRun['facebook_edited_kor'] || '',
-          newEditedRun['threads_edited_en'] || '',
-          newEditedRun['threads_edited_kor'] || ''
-        ];
-        const csvString = csvStringify([row], { header: false, quoted: true });
+        const csvString = csvStringify([newEditedRun], { header: false, quoted: true });
         await fs.appendFile(EDITED_FILE_PATH, csvString, "utf-8");
         newEditsCount++;
     }

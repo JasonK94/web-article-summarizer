@@ -2,15 +2,15 @@
   "defaults": {
     "provider": "openai",
     "generator_model": "gpt-4o-mini",
-    "editor_model": "gemini-1.5-flash",
-    "humanizer_model": "gemini-1.5-flash",
+    "editor_model": "gpt-4o-mini",
+    "humanizer_model": "gpt-4o-mini",
     "translator_model": "models/gemini-1.5-flash-latest"
   },
   "test_defaults": {
     "provider": "openai",
     "generator_model": "gpt-4o-mini",
-    "editor_model": "gemini-1.5-flash",
-    "humanizer_model": "gemini-1.5-flash",
+    "editor_model": "gpt-4o-mini",
+    "humanizer_model": "gpt-4o-mini",
     "translator_model": "models/gemini-1.5-flash-latest"
   },
   "generators": {

@@ -147,11 +147,11 @@ function composeForFacebook(content) {
 /**
  * Transforms raw content into a format suitable for a specific social media platform.
  *
- * @param {string} platform - The target social media platform (e.g., 'x', 'linkedin', 'short_form_video').
  * @param {string} content - The raw text content (e.g., an article).
+ * @param {string} platform - The target social media platform (e.g., 'x', 'linkedin', 'short_form_video').
  * @returns {SnsContent} An object containing the formatted content.
  */
-function composeForSns(platform, content) {
+function composeForSns(content, platform) {
   switch (platform) {
     case 'x':
     case 'threads':

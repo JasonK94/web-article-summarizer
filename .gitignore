@@ -42,5 +42,5 @@ jspm_packages/
 ehthumbs.db
 Thumbs.db
 
-# Local Chrome temp profile (should never be tracked)
+# cash
 temp_chrome_profile_main/
