@@ -18,11 +18,7 @@ const EDITED_FILE_PATH = path.join(EDITED_DIR, isTestMode ? 'edited_runs_test.cs
 const HUMANIZED_FILE_PATH = path.join(HUMANIZED_DIR, isTestMode ? 'humanized_runs_test.csv' : 'humanized_runs.csv');
 
 // --- Argument Parsing for Profile ---
-let humanizerProfileKey = 'friendly_korean_v1'; // Default profile
-const profileArgIndex = process.argv.findIndex(arg => arg === '--profile');
-if (profileArgIndex !== -1 && process.argv[profileArgIndex + 1]) {
-    humanizerProfileKey = process.argv[profileArgIndex + 1];
-}
+// Profile is now determined dynamically by language, so --profile flag is removed.
 // --- End Argument Parsing ---
 
 // --- Load Configuration ---
@@ -46,7 +42,7 @@ if (GEMINI_API_KEY) {
   console.warn("GEMINI_API_KEY not found in .env. The script will run without AI capabilities.");
 }
 
-async function humanizeContent(textToHumanize, profile, platform, lang) {
+async function humanizeContent(textToHumanize, profile, platform, lang, humanizerProfileKey) {
     if (isTestMode) {
         return `[TEST] Humanized content for ${platform} (${lang}).`;
     }
@@ -73,7 +69,7 @@ async function humanizeContent(textToHumanize, profile, platform, lang) {
 
 async function main() {
     if (isTestMode) console.log("🧪 RUNNING IN TEST MODE 🧪");
-    console.log(`🚀 Starting content humanization with profile: '${humanizerProfileKey}'...`);
+    console.log(`🚀 Starting content humanization...`);
 
     // --- Load Data ---
     let editedRuns = [];
@@ -100,9 +96,10 @@ async function main() {
         await fs.writeFile(HUMANIZED_FILE_PATH, '\ufeff' + headers + '\n', 'utf-8');
     }
 
-    const humanizerProfile = config.humanizers[humanizerProfileKey];
-    if (!humanizerProfile) {
-        console.error(`❌ Humanizer profile '${humanizerProfileKey}' not found in config.json. Exiting.`);
+    const koreanHumanizerProfile = config.humanizers['friendly_korean_v1'];
+    const englishHumanizerProfile = config.humanizers['friendly_english_v1'];
+    if (!koreanHumanizerProfile || !englishHumanizerProfile) {
+        console.error(`❌ Humanizer profiles ('friendly_korean_v1' or 'friendly_english_v1') not found in config.json. Exiting.`);
         return;
     }
   
@@ -110,13 +107,16 @@ async function main() {
     for (const run of editedRuns) {
         const platforms = ['linkedin', 'x', 'facebook', 'threads'];
         for (const lang of ['en', 'kor']) {
+            const humanizerProfile = lang === 'kor' ? koreanHumanizerProfile : englishHumanizerProfile;
+            const humanizerProfileKey = lang === 'kor' ? 'friendly_korean_v1' : 'friendly_english_v1';
+
             for (const platform of platforms) {
                 const mapKey = `${run.run_id}-${run.editor_profile}-${humanizerProfileKey}-${platform}-${lang}`;
                 if (humanizedRunsMap.has(mapKey.substring(0, mapKey.lastIndexOf('-')))) continue;
 
                 const sourceCol = `${platform}_edited_${lang}`;
                 if (run[sourceCol] && !run[sourceCol].startsWith('EDITING_FAILED')) {
-                    const humanizedContent = await humanizeContent(run[sourceCol], humanizerProfile, platform, lang);
+                    const humanizedContent = await humanizeContent(run[sourceCol], humanizerProfile, platform, lang, humanizerProfileKey);
                     
                     const newHumanizedRun = {
                         run_id: run.run_id,

@@ -127,7 +127,7 @@ async function main() {
   // Ensure the output directory exists
   await fs.mkdir(EDITED_DIR, { recursive: true });
   
-  // Load existing edited runs to avoid re-processing
+  // Load existing edited runs to avoid re-processing (unless previous was a failure)
   const editedRunsMap = new Map();
   try {
       const editedCsv = await fs.readFile(EDITED_FILE_PATH, 'utf-8');
@@ -163,10 +163,29 @@ async function main() {
     const runId = run.run_id;
     const mapKey = `${runId}-${editorProfileKey}`;
     
-    // Skip if this run has already been edited with this profile
+    // Skip if already edited successfully; re-run if previous row contains EDITING_FAILED
+    let shouldSkip = false;
     if (editedRunsMap.has(mapKey)) {
-        console.log(`⏩ Skipping Run ID ${runId} as it has already been edited with profile '${editorProfileKey}'.`);
-        continue;
+      const prev = editedRunsMap.get(mapKey);
+      const platforms = ['linkedin', 'x', 'facebook', 'threads'];
+      const langs = ['en', 'kor'];
+      let hasFailure = false;
+      for (const lang of langs) {
+        for (const platform of platforms) {
+          const col = `${platform}_edited_${lang}`;
+          const val = prev[col] || '';
+          if (typeof val === 'string' && val.startsWith('EDITING_FAILED')) {
+            hasFailure = true;
+            break;
+          }
+        }
+        if (hasFailure) break;
+      }
+      shouldSkip = !hasFailure;
+    }
+    if (shouldSkip) {
+      console.log(`⏩ Skipping Run ID ${runId} as it has already been edited successfully with profile '${editorProfileKey}'.`);
+      continue;
     }
     
     console.log(`✍️  Processing Run ID: ${runId}`);

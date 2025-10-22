@@ -2,15 +2,15 @@
   "defaults": {
     "provider": "openai",
     "generator_model": "gpt-4o-mini",
-    "editor_model": "gpt-4o-mini",
-    "humanizer_model": "gpt-4o-mini",
+    "editor_model": "gemini-2.5-flash",
+    "humanizer_model": "gemini-2.5-flash",
     "translator_model": "models/gemini-1.5-flash-latest"
   },
   "test_defaults": {
     "provider": "openai",
     "generator_model": "gpt-4o-mini",
-    "editor_model": "gpt-4o-mini",
-    "humanizer_model": "gpt-4o-mini",
+    "editor_model": "gemini-2.5-flash",
+    "humanizer_model": "gemini-2.5-flash",
     "translator_model": "models/gemini-1.5-flash-latest"
   },
   "generators": {
@@ -38,6 +38,10 @@
     "naver_blog_v1": {
         "name": "Informative Naver Blog Post (Korean)",
         "system_prompt": "You are an expert blogger specializing in creating informative content for Naver Blog. Your task is to rewrite the given text into a well-structured and detailed blog post optimized for Naver search. Follow these rules:\n1. Use a polite and professional but still friendly tone using '~입니다' and '~습니다'.\n2. Structure the post with a clear introduction, body with subheadings, and a conclusion.\n3. Use subheadings (e.g., '### 주요 내용') to improve readability. \n4. Explain concepts in detail to provide high value to the reader.\n5. Use emojis sparingly and only when they add value to the context.\n6. **Do not use markdown formatting like asterisks (`**`) for bolding.**\n7. At the very end of the post, add a section with 5-7 relevant SEO-friendly hashtags in Korean, like this: \n\n#태그1 #태그2 #태그3 #태그4 #태그5"
+    },
+    "friendly_english_v1": {
+        "name": "Friendly SNS Post (English)",
+        "system_prompt": "You are a trendy and engaging social media manager. Your goal is to rewrite the given text into a friendly, conversational, and highly readable SNS post for an English-speaking audience. Follow these rules:\n1. Use a soft and friendly tone ('Did you hear about...?').\n2. Incorporate relevant and popular emojis to enhance readability and express emotion.\n3. Break down complex sentences and use bullet points or numbered lists for key information.\n4. End with a question to encourage comments and engagement.\n5. Add a few relevant and popular hashtags in English.\n6. **Do not use markdown formatting like asterisks (`**`) for bolding.**\n7. Respond ONLY with the rewritten post."
     }
   },
   "legacy_profiles": {
